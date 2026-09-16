@@ -1,0 +1,65 @@
+# Node.js dependencies
+node_modules/
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Next.js build output
+apps/web/.next/
+apps/web/out/
+apps/web/build/
+
+# NestJS build output
+apps/api/dist/
+
+# Package build output
+packages/*/dist/
+packages/*/tsconfig.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+!*.env.example
+
+# Turborepo cache
+.turbo/
+
+# Prisma
+prisma/generated/
+*.db
+*.db-journal
+
+# Logs & Diagnostics
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Coverage / Testing
+coverage/
+.nyc_output/
+*.lcov
+test-results/
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+
+# Temporary directories
+tmp/
+temp/
+scratch/

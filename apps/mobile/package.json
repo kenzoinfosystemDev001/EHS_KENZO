@@ -1,0 +1,9 @@
+{
+  "name": "@kenzo-ehs/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Kenzo EHS Mobile / Flutter Client (Reserved for future Phase)",
+  "scripts": {
+    "info": "echo \"Mobile client reserved for post-Phase 0 development\""
+  }
+}

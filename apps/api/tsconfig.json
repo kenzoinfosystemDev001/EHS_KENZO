@@ -1,0 +1,29 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "ES2022",
+    "declaration": false,
+    "declarationMap": false,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "paths": {
+      "@kenzo-ehs/types": ["../../packages/types/src"],
+      "@kenzo-ehs/types/*": ["../../packages/types/src/*"],
+      "@kenzo-ehs/config": ["../../packages/config/src"],
+      "@kenzo-ehs/config/*": ["../../packages/config/src/*"],
+      "@kenzo-ehs/utils": ["../../packages/utils/src"],
+      "@kenzo-ehs/utils/*": ["../../packages/utils/src/*"],
+      "@kenzo-ehs/validation": ["../../packages/validation/src"],
+      "@kenzo-ehs/validation/*": ["../../packages/validation/src/*"],
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["src/**/*"]
+}

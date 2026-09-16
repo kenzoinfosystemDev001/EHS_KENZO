@@ -1,0 +1,11 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Phase 0 System Core Foundation
+// Comprehensive models will be expanded in Step 2 (Database Foundation)
