@@ -30,8 +30,8 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm --filter @kenzo-ehs/api run prisma:generate
 
-      - name: Typecheck Monorepo
-        run: pnpm run typecheck
-
       - name: Build Monorepo
         run: pnpm run build
+
+      - name: Typecheck Monorepo
+        run: pnpm run typecheck

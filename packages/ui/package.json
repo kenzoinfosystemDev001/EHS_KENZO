@@ -16,7 +16,7 @@
   "scripts": {
     "build": "tsc --build",
     "clean": "rimraf dist tsconfig.tsbuildinfo",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --build"
   },
   "devDependencies": {
     "@types/react": "^19.0.10",
