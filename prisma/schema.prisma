@@ -7,5 +7,609 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Phase 0 System Core Foundation
-// Comprehensive models will be expanded in Step 2 (Database Foundation)
+// ==============================================================================
+// ENUMS
+// ==============================================================================
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  INVITED
+}
+
+enum RoleScopeLevel {
+  SYSTEM
+  ORGANIZATION
+  ALL_PLANTS
+  OWN_PLANT
+  OWN_DEPARTMENT
+  OWN_AREA
+  OWN_RECORDS
+  ASSIGNED_RECORDS
+}
+
+enum DocumentClassification {
+  PUBLIC
+  INTERNAL
+  CONFIDENTIAL
+  REGULATORY_RESTRICTED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum WorkflowStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+enum WorkflowTaskStatus {
+  PENDING
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  DELEGATED
+  ESCALATED
+}
+
+// ==============================================================================
+// 1. MULTI-TENANCY & GEOGRAPHIC HIERARCHY
+// ==============================================================================
+
+model Organization {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  legalName   String?
+  slug        String   @unique
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  // Relations
+  plants                  Plant[]
+  users                   User[]
+  employees               Employee[]
+  roles                   Role[]
+  auditLogs               AuditLog[]
+  documents               Document[]
+  workflowDefinitions     WorkflowDefinition[]
+  workflowInstances       WorkflowInstance[]
+  outboxEvents            OutboxEvent[]
+  userRoles               UserRole[]
+
+  @@index([code])
+  @@index([isActive])
+}
+
+model Plant {
+  id             String       @id @default(uuid())
+  organizationId String
+  code           String
+  name           String
+  address        String?
+  city           String?
+  state          String?
+  country        String?
+  timezone       String       @default("UTC")
+  isActive       Boolean      @default(true)
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+
+  // Relations
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  departments    Department[]
+  employees      Employee[]
+  auditLogs      AuditLog[]
+  documents      Document[]
+  userRoles      UserRole[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([isActive])
+}
+
+model Department {
+  id             String       @id @default(uuid())
+  organizationId String
+  plantId        String
+  code           String
+  name           String
+  headEmployeeId String?
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+
+  // Relations
+  plant          Plant        @relation(fields: [plantId], references: [id], onDelete: Restrict)
+  areas          Area[]
+  employees      Employee[]
+  userRoles      UserRole[]
+
+  @@unique([plantId, code])
+  @@index([organizationId])
+  @@index([plantId])
+  @@index([isActive])
+}
+
+model Area {
+  id             String       @id @default(uuid())
+  organizationId String
+  plantId        String
+  departmentId   String
+  code           String
+  name           String
+  description    String?
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+
+  // Relations
+  department     Department   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+
+  @@unique([departmentId, code])
+  @@index([plantId])
+  @@index([departmentId])
+}
+
+// ==============================================================================
+// 2. IDENTITY & PEOPLE
+// ==============================================================================
+
+model User {
+  id              String       @id @default(uuid())
+  organizationId  String
+  email           String       @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  phoneNumber     String?
+  status          UserStatus   @default(ACTIVE)
+  isMfaEnabled    Boolean      @default(false)
+  lastLoginAt     DateTime?
+  passwordChangedAt DateTime   @default(now())
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  organization            Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  employee                Employee?
+  sessions                Session[]
+  userRoles               UserRole[]
+  auditLogs               AuditLog[]
+  uploadedDocuments       Document[]
+  assignedTasks           WorkflowTask[]
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([status])
+}
+
+model Employee {
+  id              String       @id @default(uuid())
+  organizationId  String
+  plantId         String
+  departmentId    String
+  userId          String?      @unique
+  employeeCode    String
+  designation     String
+  isContractor    Boolean      @default(false)
+  contractorAgency String?
+  supervisorId    String?
+  emergencyContact Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant           Plant        @relation(fields: [plantId], references: [id], onDelete: Restrict)
+  department      Department   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  supervisor      Employee?    @relation("SupervisorHierarchy", fields: [supervisorId], references: [id], onDelete: SetNull)
+  subordinates    Employee[]   @relation("SupervisorHierarchy")
+
+  @@unique([organizationId, employeeCode])
+  @@index([organizationId])
+  @@index([plantId])
+  @@index([departmentId])
+  @@index([isContractor])
+}
+
+model Session {
+  id              String       @id @default(uuid())
+  userId          String
+  refreshTokenHash String      @unique
+  ipAddress       String?
+  userAgent       String?
+  deviceInfo      Json?
+  isRevoked       Boolean      @default(false)
+  revokedAt       DateTime?
+  expiresAt       DateTime
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([refreshTokenHash])
+  @@index([isRevoked])
+  @@index([expiresAt])
+}
+
+// ==============================================================================
+// 3. RBAC & PERMISSIONS
+// ==============================================================================
+
+model Role {
+  id              String         @id @default(uuid())
+  organizationId  String?        // Null for system-wide predefined standard roles
+  code            String
+  name            String
+  description     String?
+  scopeLevel      RoleScopeLevel @default(OWN_PLANT)
+  isSystem        Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  organization    Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@unique([organizationId, code])
+  @@index([code])
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  module      String   // e.g., HIRA, INCIDENT, CAPA, PTW, ADMIN
+  action      String   // e.g., CREATE, READ, APPROVE
+  code        String   @unique // e.g., HIRA.APPROVE
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  rolePermissions RolePermission[]
+
+  @@index([module])
+  @@index([code])
+}
+
+model RolePermission {
+  id           String      @id @default(uuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime    @default(now())
+
+  // Relations
+  role         Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission  @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+model UserRole {
+  id              String         @id @default(uuid())
+  userId          String
+  roleId          String
+  organizationId  String
+  plantId         String?        // Scoped plant (optional if ALL_PLANTS/SYSTEM)
+  departmentId    String?        // Scoped department (optional)
+  scopeOverride   RoleScopeLevel?
+  createdAt       DateTime       @default(now())
+
+  // Relations
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role            Role           @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plant           Plant?         @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  department      Department?    @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, roleId, organizationId, plantId, departmentId])
+  @@index([userId])
+  @@index([roleId])
+  @@index([plantId])
+}
+
+// ==============================================================================
+// 4. AUDIT & VERSIONING
+// ==============================================================================
+
+model AuditLog {
+  id              String       @id @default(uuid())
+  organizationId  String
+  plantId         String?
+  actorId         String
+  action          String       // e.g., CREATE, UPDATE, APPROVE, CLOSE
+  entityType      String       // e.g., HiraStudy, Incident, Capa, User
+  entityId        String
+  requestId       String?
+  ipAddress       String?
+  userAgent       String?
+  beforeState     Json?
+  afterState      Json?
+  diff            Json?
+  reason          String?
+  metadata        Json?
+  timestamp       DateTime     @default(now())
+
+  // Relations - Restrict deletion of parents to maintain immutable compliance audit logs
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant           Plant?       @relation(fields: [plantId], references: [id], onDelete: Restrict)
+  actor           User         @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([plantId])
+  @@index([entityType, entityId])
+  @@index([actorId, timestamp])
+  @@index([timestamp])
+}
+
+model EntityVersion {
+  id          String   @id @default(uuid())
+  entityType  String
+  entityId    String
+  version     Int
+  snapshot    Json
+  actorId     String
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  @@unique([entityType, entityId, version])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+// ==============================================================================
+// 5. DOCUMENTS
+// ==============================================================================
+
+model Document {
+  id              String                 @id @default(uuid())
+  organizationId  String
+  plantId         String?
+  uploadedById    String
+  title           String
+  fileName        String
+  fileSize        Int
+  mimeType        String
+  storageKey      String                 // S3 object key or URI
+  sha256Hash      String
+  classification  DocumentClassification @default(INTERNAL)
+  retentionYears  Int                    @default(7)
+  isArchived      Boolean                @default(false)
+  entityType      String?                // e.g., Incident, HIRA, CAPA
+  entityId        String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  organization    Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant           Plant?                 @relation(fields: [plantId], references: [id], onDelete: Restrict)
+  uploadedBy      User                   @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  versions        DocumentVersion[]
+
+  @@index([organizationId])
+  @@index([plantId])
+  @@index([entityType, entityId])
+  @@index([sha256Hash])
+}
+
+model DocumentVersion {
+  id          String   @id @default(uuid())
+  documentId  String
+  version     Int
+  storageKey  String
+  fileSize    Int
+  sha256Hash  String
+  uploadedById String
+  changeNotes String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, version])
+  @@index([documentId])
+}
+
+// ==============================================================================
+// 6. WORKFLOW ENGINE CORE
+// ==============================================================================
+
+model WorkflowDefinition {
+  id              String             @id @default(uuid())
+  organizationId  String
+  code            String             // e.g., HIRA_APPROVAL_V1, INCIDENT_HIGH_SEVERITY
+  name            String
+  entityType      String             // e.g., HiraStudy, Incident, Capa
+  version         Int                @default(1)
+  isActive        Boolean            @default(true)
+  definition      Json               // State machine definition, transitions, preconditions
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  // Relations
+  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  steps           WorkflowStep[]
+  instances       WorkflowInstance[]
+
+  @@unique([organizationId, code, version])
+  @@index([organizationId])
+  @@index([entityType, isActive])
+}
+
+model WorkflowStep {
+  id                   String             @id @default(uuid())
+  workflowDefinitionId String
+  stepKey              String             // e.g., DRAFT, CLASSIFIED, RCA, VERIFICATION
+  name                 String
+  sequenceOrder        Int
+  requiredRoleCode     String?
+  slaHours             Int?
+  isTerminal           Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+
+  // Relations
+  workflowDefinition   WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowDefinitionId, stepKey])
+  @@index([workflowDefinitionId, sequenceOrder])
+}
+
+model WorkflowInstance {
+  id                   String             @id @default(uuid())
+  organizationId       String
+  workflowDefinitionId String
+  entityType           String             // e.g., HiraStudy, Incident
+  entityId             String
+  currentState         String
+  status               WorkflowStatus     @default(IN_PROGRESS)
+  initiatedById        String
+  startedAt            DateTime           @default(now())
+  completedAt          DateTime?
+  contextData          Json?              // Ephemeral workflow state data
+
+  // Relations
+  organization         Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  workflowDefinition   WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id], onDelete: Restrict)
+  tasks                WorkflowTask[]
+  actions              WorkflowAction[]
+
+  @@index([organizationId])
+  @@index([entityType, entityId])
+  @@index([status])
+}
+
+model WorkflowTask {
+  id                 String             @id @default(uuid())
+  workflowInstanceId String
+  stepKey            String
+  assignedToUserId   String?
+  assignedRoleCode   String?
+  status             WorkflowTaskStatus @default(PENDING)
+  dueAt              DateTime?
+  completedAt        DateTime?
+  comments           String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  // Relations
+  workflowInstance   WorkflowInstance   @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
+  assignedToUser     User?              @relation(fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  @@index([workflowInstanceId])
+  @@index([assignedToUserId, status])
+  @@index([status, dueAt])
+}
+
+model WorkflowAction {
+  id                 String           @id @default(uuid())
+  workflowInstanceId String
+  action             String           // e.g., SUBMIT, APPROVE, REJECT, CLOSE
+  fromState          String
+  toState            String
+  actorId            String
+  actorRoleCode      String?
+  comments           String?
+  payload            Json?
+  timestamp          DateTime         @default(now())
+
+  // Relations
+  workflowInstance   WorkflowInstance @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
+
+  @@index([workflowInstanceId])
+  @@index([actorId, timestamp])
+}
+
+// ==============================================================================
+// 7. NOTIFICATIONS & OUTBOX
+// ==============================================================================
+
+model Notification {
+  id          String               @id @default(uuid())
+  userId      String
+  title       String
+  message     String
+  priority    NotificationPriority @default(MEDIUM)
+  channel     NotificationChannel  @default(IN_APP)
+  isRead      Boolean              @default(false)
+  readAt      DateTime?
+  linkUrl     String?
+  entityType  String?
+  entityId    String?
+  createdAt   DateTime             @default(now())
+
+  // Relations
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+model NotificationPreference {
+  id        String              @id @default(uuid())
+  userId    String
+  channel   NotificationChannel
+  category  String              // e.g., WORKFLOW_ASSIGNMENT, CAPA_OVERDUE, HIGH_INCIDENT
+  isEnabled Boolean             @default(true)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  // Relations
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channel, category])
+  @@index([userId])
+}
+
+model OutboxEvent {
+  id             String       @id @default(uuid())
+  organizationId String
+  aggregateType  String       // e.g., INCIDENT, HIRA, CAPA
+  aggregateId    String
+  eventType      String       // e.g., INCIDENT_CREATED, HIRA_APPROVED
+  payload        Json
+  headers        Json?
+  createdAt      DateTime     @default(now())
+  processedAt    DateTime?
+  retryCount     Int          @default(0)
+  lastError      String?
+
+  // Relations
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([processedAt, createdAt])
+  @@index([organizationId])
+  @@index([aggregateType, aggregateId])
+}

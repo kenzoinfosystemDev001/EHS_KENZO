@@ -10,6 +10,9 @@
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "scripts": {
     "build": "pnpm -r --filter=!@kenzo-ehs/mobile run build",
     "dev:api": "pnpm --filter @kenzo-ehs/api run start:dev",
@@ -19,11 +22,21 @@
     "test": "pnpm -r --filter=!@kenzo-ehs/mobile run test",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "clean": "rimraf \"**/node_modules\" \"**/dist\" \"**/.next\" \"**/.turbo\""
+    "clean": "rimraf \"**/node_modules\" \"**/dist\" \"**/.next\" \"**/.turbo\"",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
+    "prisma:seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "bcrypt": "^5.1.1"
   },
   "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
     "prettier": "^3.5.3",
+    "prisma": "^6.19.3",
     "rimraf": "^6.0.1",
+    "tsx": "^4.19.3",
     "typescript": "^5.8.2"
   }
 }
