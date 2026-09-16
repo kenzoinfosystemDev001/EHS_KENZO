@@ -326,6 +326,22 @@ async function main() {
     Permissions.PTW_CREATE,
     Permissions.PTW_READ,
   ]);
+
+  // Plant Head permissions
+  await assignPermissions(plantHeadRoleId, [
+    Permissions.HIRA_READ,
+    Permissions.HIRA_APPROVE,
+    Permissions.HIRA_ACTIVATE,
+    Permissions.INCIDENT_READ,
+    Permissions.INCIDENT_APPROVE,
+    Permissions.INCIDENT_CLOSE,
+    Permissions.RCA_APPROVE,
+    Permissions.CAPA_CLOSE,
+    Permissions.CAPA_VERIFY,
+    Permissions.PTW_APPROVE,
+    Permissions.PTW_CLOSE,
+    Permissions.AUDIT_LOG_READ,
+  ]);
   console.log(`✅ Assigned permissions to Admin, HSE Manager, Safety Officer, and Worker`);
 
   // 8. Seed Default Users with Hashed Passwords

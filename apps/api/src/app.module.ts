@@ -11,6 +11,11 @@ import { DocumentsModule } from './modules/documents/documents.module';
 import { HiraModule } from './modules/hira/hira.module';
 import { MasterDataModule } from './modules/master-data/master-data.module';
 import { InboxModule } from './modules/inbox/inbox.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { IncidentModule } from './modules/incident/incident.module';
+import { RcaModule } from './modules/rca/rca.module';
+import { CapaModule } from './modules/capa/capa.module';
+import { PtwModule } from './modules/ptw/ptw.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
 @Module({
@@ -30,6 +35,11 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
     HiraModule,
     MasterDataModule,
     InboxModule,
+    DashboardModule,
+    IncidentModule,
+    RcaModule,
+    CapaModule,
+    PtwModule,
   ],
 })
 export class AppModule implements NestModule {

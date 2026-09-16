@@ -125,4 +125,43 @@ export class MasterDataService {
 
     return foundUser;
   }
+
+  async getAreas(user: AuthenticatedUserContext, departmentId?: string, plantId?: string) {
+    const where: any = { organizationId: user.organizationId, isActive: true };
+    if (departmentId) where.departmentId = departmentId;
+    if (plantId) where.plantId = plantId;
+    return this.prisma.area.findMany({
+      where,
+      include: {
+        department: { select: { id: true, code: true, name: true } },
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async createArea(dto: { organizationId: string; plantId: string; departmentId: string; code: string; name: string; description?: string }) {
+    return this.prisma.area.create({
+      data: {
+        organizationId: dto.organizationId,
+        plantId: dto.plantId,
+        departmentId: dto.departmentId,
+        code: dto.code,
+        name: dto.name,
+        description: dto.description ?? null,
+        isActive: true,
+      },
+    });
+  }
+
+  async updateUserStatus(id: string, status: string, user: AuthenticatedUserContext) {
+    const target = await this.prisma.user.findFirst({
+      where: { id, organizationId: user.organizationId },
+    });
+    if (!target) throw new NotFoundException(`User [${id}] not found`);
+    return this.prisma.user.update({
+      where: { id },
+      data: { status: status as any },
+      select: { id: true, email: true, firstName: true, lastName: true, status: true },
+    });
+  }
 }

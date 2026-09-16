@@ -1,5 +1,6 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { IsEnum } from 'class-validator';
 import { MasterDataService } from './master-data.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -7,6 +8,11 @@ import { RequirePermissions } from '../../common/decorators/require-permissions.
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthenticatedUserContext } from '../auth/interfaces/auth.interface';
 import { Permissions } from '@kenzo-ehs/types';
+
+class UpdateUserStatusDto {
+  @IsEnum(['ACTIVE', 'INACTIVE', 'SUSPENDED'])
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+}
 
 @ApiTags('Users')
 @Controller('users')
@@ -36,5 +42,16 @@ export class UsersController {
     @CurrentUser() user: AuthenticatedUserContext,
   ) {
     return this.masterDataService.getUserById(id, user);
+  }
+
+  @Patch(':id/status')
+  @RequirePermissions(Permissions.USER_UPDATE)
+  @ApiOperation({ summary: 'Update user status (ACTIVE/INACTIVE/SUSPENDED)' })
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserStatusDto,
+    @CurrentUser() user: AuthenticatedUserContext,
+  ) {
+    return this.masterDataService.updateUserStatus(id, dto.status, user);
   }
 }

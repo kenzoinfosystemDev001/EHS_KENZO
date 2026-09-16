@@ -35,3 +35,14 @@ jobs:
 
       - name: Typecheck Monorepo
         run: pnpm run typecheck
+
+      - name: Lint Monorepo
+        run: pnpm run lint
+        continue-on-error: true
+
+      - name: Run E2E Tests
+        run: pnpm --filter @kenzo-ehs/api run test:e2e
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        continue-on-error: true

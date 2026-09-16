@@ -121,7 +121,103 @@ enum HazardCategory {
 // 1. MULTI-TENANCY & GEOGRAPHIC HIERARCHY
 // ==============================================================================
 
+
+enum IncidentType {
+  NEAR_MISS
+  FIRST_AID
+  MEDICAL_TREATMENT
+  LOST_TIME_INJURY
+  FATALITY
+  PROPERTY_DAMAGE
+  ENVIRONMENTAL_RELEASE
+  FIRE
+  EXPLOSION
+  SPILL
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+  CATASTROPHIC
+}
+
+enum IncidentStatus {
+  DRAFT
+  REPORTED
+  CLASSIFIED
+  INVESTIGATING
+  RCA_INITIATED
+  CAPA_LINKED
+  PENDING_CLOSURE
+  CLOSED
+  STATUTORY_FILED
+}
+
+enum RcaStatus {
+  DRAFT
+  IN_PROGRESS
+  REVIEW
+  APPROVED
+  CLOSED
+}
+
+enum RcaMethodology {
+  FIVE_WHY
+  FISHBONE
+  FAULT_TREE
+  BOW_TIE
+}
+
+enum CapaStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  PENDING_VERIFICATION
+  VERIFIED
+  CLOSED
+  OVERDUE
+}
+
+enum CapaPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum CapaType {
+  CORRECTIVE
+  PREVENTIVE
+}
+
+enum PtwStatus {
+  DRAFT
+  SUBMITTED
+  SAFETY_REVIEWED
+  APPROVED
+  ACTIVE
+  SUSPENDED
+  CLOSED
+  REJECTED
+}
+
+enum PtwCategory {
+  HOT_WORK
+  CONFINED_SPACE
+  ELECTRICAL
+  WORKING_AT_HEIGHT
+  EXCAVATION
+  CHEMICAL
+  RADIATION
+  GENERAL
+}
 model Organization {
+  incidents         Incident[]
+  rcaStudies        RcaStudy[]
+  capaRecords       CapaRecord[]
+  permitsToWork     PermitToWork[]
   id          String   @id @default(uuid())
   code        String   @unique
   name        String
@@ -151,6 +247,10 @@ model Organization {
 }
 
 model Plant {
+  incidents         Incident[]
+  rcaStudies        RcaStudy[]
+  capaRecords       CapaRecord[]
+  permitsToWork     PermitToWork[]
   id             String       @id @default(uuid())
   organizationId String
   code           String
@@ -181,6 +281,9 @@ model Plant {
 }
 
 model Department {
+  incidents         Incident[]
+  capaRecords       CapaRecord[]
+  permitsToWork     PermitToWork[]
   id             String       @id @default(uuid())
   organizationId String
   plantId        String
@@ -206,6 +309,7 @@ model Department {
 }
 
 model Area {
+  incidents         Incident[]
   id             String       @id @default(uuid())
   organizationId String
   plantId        String
@@ -232,6 +336,14 @@ model Area {
 // ==============================================================================
 
 model User {
+  reportedIncidents Incident[] @relation("IncidentReporter")
+  investigatedIncidents Incident[] @relation("IncidentInvestigator")
+  ledRcaStudies     RcaStudy[] @relation("RcaLeadInvestigator")
+  assignedCapas     CapaRecord[] @relation("CapaAssignee")
+  createdCapas      CapaRecord[] @relation("CapaCreator")
+  capaTasksAssigned CapaTask[] @relation("CapaTaskAssignee")
+  capaVerifications CapaVerification[] @relation("CapaVerifier")
+  requestedPermits  PermitToWork[] @relation("PtwRequester")
   id              String       @id @default(uuid())
   organizationId  String
   email           String       @unique
@@ -861,4 +973,299 @@ model HiraVersion {
 
   @@unique([hiraStudyId, versionNumber])
   @@index([hiraStudyId])
+}
+
+
+// ==============================================================================
+// 9. INCIDENT MANAGEMENT
+// ==============================================================================
+
+model Incident {
+  id                  String           @id @default(uuid())
+  organizationId      String
+  plantId             String
+  departmentId        String
+  areaId              String?
+  referenceNumber     String           // e.g. INC-2026-NW-0001
+  title               String
+  description         String
+  incidentType        IncidentType
+  severity            IncidentSeverity @default(MEDIUM)
+  status              IncidentStatus   @default(DRAFT)
+  incidentDate        DateTime
+  incidentTime        String?          // HH:MM format
+  location            String?
+  reportedById        String
+  investigatorId      String?
+  classifiedById      String?
+  closedById          String?
+  rootCauseId         String?          // FK to RcaStudy
+  workflowInstanceId  String?
+  immediateActions    String?
+  isStatutoryRequired Boolean          @default(false)
+  statutoryFiledAt    DateTime?
+  submittedAt         DateTime?
+  classifiedAt        DateTime?
+  investigationStartedAt DateTime?
+  closedAt            DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  deletedAt           DateTime?
+
+  // Relations
+  organization        Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant               Plant            @relation(fields: [plantId], references: [id], onDelete: Restrict)
+  department          Department       @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  area                Area?            @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  reportedBy          User             @relation("IncidentReporter", fields: [reportedById], references: [id], onDelete: Restrict)
+  investigator        User?            @relation("IncidentInvestigator", fields: [investigatorId], references: [id], onDelete: SetNull)
+  injuries            IncidentInjury[]
+  witnesses           IncidentWitness[]
+  rcaStudies          RcaStudy[]
+  capaRecords         CapaRecord[]
+
+  @@unique([organizationId, referenceNumber])
+  @@index([organizationId])
+  @@index([plantId])
+  @@index([departmentId])
+  @@index([status])
+  @@index([severity])
+  @@index([incidentDate])
+  @@index([reportedById])
+}
+
+model IncidentInjury {
+  id              String   @id @default(uuid())
+  incidentId      String
+  personName      String
+  employeeCode    String?
+  bodyPart        String?
+  injuryType      String
+  medicalAttended Boolean  @default(false)
+  hospitalName    String?
+  createdAt       DateTime @default(now())
+
+  incident        Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId])
+}
+
+model IncidentWitness {
+  id           String   @id @default(uuid())
+  incidentId   String
+  personName   String
+  employeeCode String?
+  statement    String?
+  createdAt    DateTime @default(now())
+
+  incident     Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId])
+}
+
+// ==============================================================================
+// 10. ROOT CAUSE ANALYSIS (RCA)
+// ==============================================================================
+
+model RcaStudy {
+  id              String         @id @default(uuid())
+  organizationId  String
+  plantId         String
+  incidentId      String
+  referenceNumber String         // e.g. RCA-2026-NW-0001
+  title           String
+  methodology     RcaMethodology @default(FIVE_WHY)
+  status          RcaStatus      @default(DRAFT)
+  leadInvestigatorId String
+  rootCauseSummary   String?
+  contributingFactors Json?
+  systemicFactors    Json?
+  workflowInstanceId String?
+  approvedById       String?
+  approvedAt         DateTime?
+  closedAt           DateTime?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  deletedAt          DateTime?
+
+  // Relations
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant           Plant          @relation(fields: [plantId], references: [id], onDelete: Restrict)
+  incident        Incident       @relation(fields: [incidentId], references: [id], onDelete: Restrict)
+  leadInvestigator User          @relation("RcaLeadInvestigator", fields: [leadInvestigatorId], references: [id], onDelete: Restrict)
+  findings        RcaFinding[]
+  capaRecords     CapaRecord[]
+
+  @@unique([organizationId, referenceNumber])
+  @@index([organizationId])
+  @@index([plantId])
+  @@index([incidentId])
+  @@index([status])
+}
+
+model RcaFinding {
+  id           String    @id @default(uuid())
+  rcaStudyId   String
+  whyLevel     Int?      // For 5-Why: 1-5
+  category     String?   // For Fishbone: Machine, Method, Man, Material, Measurement, Environment
+  finding      String
+  evidence     String?
+  isRootCause  Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  rcaStudy     RcaStudy  @relation(fields: [rcaStudyId], references: [id], onDelete: Cascade)
+
+  @@index([rcaStudyId])
+}
+
+// ==============================================================================
+// 11. CAPA (CORRECTIVE AND PREVENTIVE ACTION)
+// ==============================================================================
+
+model CapaRecord {
+  id              String       @id @default(uuid())
+  organizationId  String
+  plantId         String
+  departmentId    String?
+  referenceNumber String       // e.g. CAPA-2026-NW-0001
+  title           String
+  description     String
+  capaType        CapaType     @default(CORRECTIVE)
+  priority        CapaPriority @default(MEDIUM)
+  status          CapaStatus   @default(OPEN)
+  incidentId      String?
+  rcaStudyId      String?
+  assignedToId    String?
+  verifiedById    String?
+  closedById      String?
+  workflowInstanceId String?
+  targetDate      DateTime?
+  dueDate         DateTime?
+  assignedAt      DateTime?
+  startedAt       DateTime?
+  verifiedAt      DateTime?
+  closedAt        DateTime?
+  effectivenessRating Int?     // 1-5
+  effectivenessNotes  String?
+  createdById     String
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant           Plant        @relation(fields: [plantId], references: [id], onDelete: Restrict)
+  department      Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  incident        Incident?    @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+  rcaStudy        RcaStudy?    @relation(fields: [rcaStudyId], references: [id], onDelete: SetNull)
+  assignedTo      User?        @relation("CapaAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdBy       User         @relation("CapaCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  tasks           CapaTask[]
+  verifications   CapaVerification[]
+
+  @@unique([organizationId, referenceNumber])
+  @@index([organizationId])
+  @@index([plantId])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([targetDate])
+}
+
+model CapaTask {
+  id           String     @id @default(uuid())
+  capaId       String
+  title        String
+  description  String?
+  assignedToId String?
+  dueDate      DateTime?
+  completedAt  DateTime?
+  isComplete   Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  capa         CapaRecord @relation(fields: [capaId], references: [id], onDelete: Cascade)
+  assignedTo   User?      @relation("CapaTaskAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([capaId])
+}
+
+model CapaVerification {
+  id           String     @id @default(uuid())
+  capaId       String
+  verifiedById String
+  verdict      String     // EFFECTIVE, PARTIALLY_EFFECTIVE, INEFFECTIVE
+  notes        String
+  verifiedAt   DateTime   @default(now())
+
+  capa         CapaRecord @relation(fields: [capaId], references: [id], onDelete: Cascade)
+  verifiedBy   User       @relation("CapaVerifier", fields: [verifiedById], references: [id], onDelete: Restrict)
+
+  @@index([capaId])
+}
+
+// ==============================================================================
+// 12. PERMIT TO WORK (PTW)
+// ==============================================================================
+
+model PermitToWork {
+  id                  String      @id @default(uuid())
+  organizationId      String
+  plantId             String
+  departmentId        String
+  areaId              String?
+  referenceNumber     String      // e.g. PTW-2026-NW-0001
+  title               String
+  workDescription     String
+  category            PtwCategory @default(GENERAL)
+  status              PtwStatus   @default(DRAFT)
+  requestedById       String
+  safetyReviewerId    String?
+  approvedById        String?
+  closedById          String?
+  workflowInstanceId  String?
+  plannedStartDate    DateTime
+  plannedEndDate      DateTime
+  actualStartDate     DateTime?
+  actualEndDate       DateTime?
+  hazardsIdentified   String?
+  precautions         String?
+  emergencyProcedures String?
+  ppeRequired         Json?       // Array of PPE items
+  approvedAt          DateTime?
+  closedAt            DateTime?
+  rejectedAt          DateTime?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  deletedAt           DateTime?
+
+  // Relations
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant               Plant        @relation(fields: [plantId], references: [id], onDelete: Restrict)
+  department          Department   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  requestedBy         User         @relation("PtwRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  isolationPoints     PtwIsolationPoint[]
+
+  @@unique([organizationId, referenceNumber])
+  @@index([organizationId])
+  @@index([plantId])
+  @@index([status])
+  @@index([category])
+  @@index([plannedStartDate])
+}
+
+model PtwIsolationPoint {
+  id            String       @id @default(uuid())
+  permitId      String
+  isolationType String       // ELECTRICAL, MECHANICAL, PROCESS, PNEUMATIC
+  description   String
+  location      String?
+  isolatedById  String?
+  isolatedAt    DateTime?
+  reinstatedAt  DateTime?
+  createdAt     DateTime     @default(now())
+
+  permit        PermitToWork @relation(fields: [permitId], references: [id], onDelete: Cascade)
+
+  @@index([permitId])
 }

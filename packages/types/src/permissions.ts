@@ -44,6 +44,7 @@ export const Permissions = {
 
   // CAPA (Corrective and Preventive Action)
   CAPA_CREATE: 'CAPA.CREATE',
+  CAPA_READ: 'CAPA.READ',
   CAPA_ASSIGN: 'CAPA.ASSIGN',
   CAPA_UPDATE: 'CAPA.UPDATE',
   CAPA_EXECUTE: 'CAPA.EXECUTE',

@@ -17,24 +17,47 @@ export interface ApiResponse<T> {
   };
 }
 
+// Token is injected by the auth context at runtime
+let _accessToken: string | null = null;
+let _onUnauthorized: (() => Promise<string | null>) | null = null;
+
+export function setApiToken(token: string | null) {
+  _accessToken = token;
+}
+
+export function setRefreshHandler(handler: () => Promise<string | null>) {
+  _onUnauthorized = handler;
+}
+
 export async function apiClient<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<ApiResponse<T>> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('kenzo_access_token') : null;
+  const doRequest = async (token: string | null) => {
+    const headers = new Headers(options.headers || {});
+    if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
+      headers.set('Content-Type', 'application/json');
+    }
+    if (token && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
 
-  const headers = new Headers(options.headers || {});
-  if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
-    headers.set('Content-Type', 'application/json');
-  }
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
+    return fetch(
+      `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`,
+      { ...options, headers, credentials: 'include' },
+    );
+  };
 
-  const res = await fetch(`${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`, {
-    ...options,
-    headers,
-  });
+  let res = await doRequest(_accessToken);
+
+  // Auto-refresh on 401
+  if (res.status === 401 && _onUnauthorized) {
+    const newToken = await _onUnauthorized();
+    if (newToken) {
+      _accessToken = newToken;
+      res = await doRequest(newToken);
+    }
+  }
 
   const data = await res.json();
   return data as ApiResponse<T>;
