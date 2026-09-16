@@ -230,6 +230,19 @@ model Organization {
   deletedAt   DateTime?
 
   // Relations
+  safetyObservations      SafetyObservation[]
+  actionItems             ActionItem[]
+  lotoEquipments          LotoEquipment[]
+  inspectionTemplates     InspectionTemplate[]
+  inspectionExecutions    InspectionExecution[]
+  auditPlans              AuditPlan[]
+  trainingCourses         TrainingCourse[]
+  contractorCompanies     ContractorCompany[]
+  healthRecords           HealthRecord[]
+  environmentalMetrics    EnvironmentalMetric[]
+  emergencyDrills         EmergencyDrill[]
+  complianceObligations   ComplianceObligation[]
+  plantManhours           PlantManhours[]
   plants                  Plant[]
   users                   User[]
   employees               Employee[]
@@ -267,6 +280,19 @@ model Plant {
   deletedAt      DateTime?
 
   // Relations
+  safetyObservations      SafetyObservation[]
+  actionItems             ActionItem[]
+  lotoEquipments          LotoEquipment[]
+  inspectionExecutions    InspectionExecution[]
+  auditPlans              AuditPlan[]
+  trainingSessions        TrainingSession[]
+  contractorCompanies     ContractorCompany[]
+  healthRecords           HealthRecord[]
+  environmentalMetrics    EnvironmentalMetric[]
+  emergencyDrills         EmergencyDrill[]
+  emergencyContacts       EmergencyContact[]
+  complianceObligations   ComplianceObligation[]
+  plantManhours           PlantManhours[]
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   departments    Department[]
   employees      Employee[]
@@ -296,6 +322,7 @@ model Department {
   deletedAt      DateTime?
 
   // Relations
+  safetyObservations      SafetyObservation[]
   plant          Plant        @relation(fields: [plantId], references: [id], onDelete: Restrict)
   areas          Area[]
   employees      Employee[]
@@ -360,6 +387,18 @@ model User {
   deletedAt       DateTime?
 
   // Relations
+  observedObservations    SafetyObservation[]       @relation("ObserverUser")
+  reviewedObservations    SafetyObservation[]       @relation("ObservationReviewer")
+  ownedActions            ActionItem[]              @relation("ActionOwner")
+  verifiedActions         ActionItem[]              @relation("ActionVerifier")
+  lotoApplied             LotoIsolation[]           @relation("LotoAppliedBy")
+  lotoVerified            LotoIsolation[]           @relation("LotoVerifiedBy")
+  lotoReleased            LotoIsolation[]           @relation("LotoReleasedBy")
+  inspectionsExecuted     InspectionExecution[]     @relation("InspectorUser")
+  auditsLed               AuditPlan[]               @relation("LeadAuditor")
+  trainingConducted       TrainingSession[]         @relation("TrainerUser")
+  trainingRecords         TrainingRecord[]          @relation("TrainedUser")
+  healthRecords           HealthRecord[]            @relation("UserHealthRecord")
   organization            Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   employee                Employee?
   sessions                Session[]
@@ -1245,6 +1284,7 @@ model PermitToWork {
   department          Department   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
   requestedBy         User         @relation("PtwRequester", fields: [requestedById], references: [id], onDelete: Restrict)
   isolationPoints     PtwIsolationPoint[]
+  lotoIsolations      LotoIsolation[]
 
   @@unique([organizationId, referenceNumber])
   @@index([organizationId])
@@ -1268,4 +1308,547 @@ model PtwIsolationPoint {
   permit        PermitToWork @relation(fields: [permitId], references: [id], onDelete: Cascade)
 
   @@index([permitId])
+}
+
+
+// ==============================================================================
+// 13. SAFETY OBSERVATIONS (BBS)
+// ==============================================================================
+
+enum ObservationType {
+  SAFE_ACT
+  UNSAFE_ACT
+  SAFE_CONDITION
+  UNSAFE_CONDITION
+  HAZARD_ID
+  POSITIVE
+}
+
+enum ObservationStatus {
+  REPORTED
+  REVIEWED
+  ACTION_REQUIRED
+  VERIFIED
+  CLOSED
+}
+
+model SafetyObservation {
+  id              String            @id @default(uuid())
+  organizationId  String
+  plantId         String
+  departmentId    String?
+  areaId          String?
+  referenceNumber String            // e.g. OBS-2026-0001
+  observationType ObservationType
+  status          ObservationStatus @default(REPORTED)
+  severity        IncidentSeverity  @default(LOW)
+  description     String
+  locationDetails String?
+  immediateAction String?
+  observerId      String
+  reviewerId      String?
+  evidenceKey     String?
+  actionRequired  Boolean           @default(false)
+  reportedAt      DateTime          @default(now())
+  reviewedAt      DateTime?
+  closedAt        DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deletedAt       DateTime?
+
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant           Plant             @relation(fields: [plantId], references: [id], onDelete: Restrict)
+  department      Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  observer        User              @relation("ObserverUser", fields: [observerId], references: [id], onDelete: Restrict)
+  reviewer        User?             @relation("ObservationReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  actions         ActionItem[]
+
+  @@unique([organizationId, referenceNumber])
+  @@index([organizationId])
+  @@index([plantId])
+  @@index([status])
+  @@index([observationType])
+}
+
+// ==============================================================================
+// 14. UNIFIED ACTION ENGINE
+// ==============================================================================
+
+enum ActionItemStatus {
+  OPEN
+  IN_PROGRESS
+  PENDING_VERIFICATION
+  VERIFIED
+  CLOSED
+  OVERDUE
+}
+
+enum ActionSourceType {
+  INCIDENT
+  RCA
+  CAPA
+  INSPECTION
+  AUDIT
+  OBSERVATION
+  HIRA
+  COMPLIANCE
+  MANAGEMENT_REVIEW
+}
+
+model ActionItem {
+  id                String            @id @default(uuid())
+  organizationId    String
+  plantId           String
+  referenceNumber   String            // e.g. ACT-2026-0001
+  title             String
+  description       String
+  sourceType        ActionSourceType
+  sourceEntityId    String?
+  status            ActionItemStatus  @default(OPEN)
+  priority          CapaPriority      @default(MEDIUM)
+  ownerId           String
+  verifierId        String?
+  targetDate        DateTime
+  completedAt       DateTime?
+  verifiedAt        DateTime?
+  completionNotes   String?
+  verificationNotes String?
+  evidenceKey       String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  deletedAt         DateTime?
+
+  observationId     String?
+  observation       SafetyObservation? @relation(fields: [observationId], references: [id], onDelete: SetNull)
+
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant             Plant             @relation(fields: [plantId], references: [id], onDelete: Restrict)
+  owner             User              @relation("ActionOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  verifier          User?             @relation("ActionVerifier", fields: [verifierId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, referenceNumber])
+  @@index([organizationId])
+  @@index([plantId])
+  @@index([status])
+  @@index([ownerId])
+  @@index([targetDate])
+  @@index([sourceType])
+}
+
+// ==============================================================================
+// 15. LOCKOUT / TAGOUT (LOTO)
+// ==============================================================================
+
+model LotoEquipment {
+  id              String            @id @default(uuid())
+  organizationId  String
+  plantId         String
+  departmentId    String
+  tagNumber       String            // e.g. EQ-PUMP-101
+  name            String
+  location        String?
+  energyTypes     Json?             // array of ELECTRICAL, HYDRAULIC, PNEUMATIC, etc.
+  isolationSteps  String?
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant           Plant             @relation(fields: [plantId], references: [id], onDelete: Restrict)
+  isolations      LotoIsolation[]
+
+  @@unique([plantId, tagNumber])
+  @@index([organizationId])
+  @@index([plantId])
+}
+
+model LotoIsolation {
+  id              String            @id @default(uuid())
+  equipmentId     String
+  permitId        String?
+  isolationPoint  String
+  lockBoxNumber   String?
+  appliedById     String
+  verifiedById    String?
+  releasedById    String?
+  appliedAt       DateTime          @default(now())
+  releasedAt      DateTime?
+  notes           String?
+
+  equipment       LotoEquipment     @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  permit          PermitToWork?     @relation(fields: [permitId], references: [id], onDelete: SetNull)
+  appliedBy       User              @relation("LotoAppliedBy", fields: [appliedById], references: [id], onDelete: Restrict)
+  verifiedBy      User?             @relation("LotoVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  releasedBy      User?             @relation("LotoReleasedBy", fields: [releasedById], references: [id], onDelete: SetNull)
+
+  @@index([equipmentId])
+  @@index([permitId])
+}
+
+// ==============================================================================
+// 16. INSPECTIONS & CHECKLISTS
+// ==============================================================================
+
+enum InspectionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+}
+
+model InspectionTemplate {
+  id              String            @id @default(uuid())
+  organizationId  String
+  plantId         String?
+  title           String
+  category        String            // FIRE_SAFETY, ELECTRICAL, CHEMICAL, CRANE, GENERAL
+  checklistItems  Json              // array of { id, text, category, isMandatory }
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  executions      InspectionExecution[]
+
+  @@index([organizationId])
+}
+
+model InspectionExecution {
+  id              String            @id @default(uuid())
+  organizationId  String
+  plantId         String
+  departmentId    String?
+  templateId      String
+  inspectorId     String
+  status          InspectionStatus  @default(COMPLETED)
+  score           Float             @default(100)
+  findings        Json?             // items with responses, pass/fail, notes
+  executedAt      DateTime          @default(now())
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant           Plant             @relation(fields: [plantId], references: [id], onDelete: Restrict)
+  template        InspectionTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  inspector       User              @relation("InspectorUser", fields: [inspectorId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([plantId])
+  @@index([status])
+}
+
+// ==============================================================================
+// 17. AUDITS & FINDINGS
+// ==============================================================================
+
+enum AuditFindingGrade {
+  MAJOR_NC
+  MINOR_NC
+  OBSERVATION
+  OFI
+}
+
+enum AuditPlanStatus {
+  PLANNED
+  IN_PROGRESS
+  UNDER_REVIEW
+  COMPLETED
+  CLOSED
+}
+
+model AuditPlan {
+  id              String            @id @default(uuid())
+  organizationId  String
+  plantId         String
+  referenceNumber String            // AUD-2026-001
+  title           String
+  auditType       String            // INTERNAL, ISO45001, ISO14001, CORPORATE
+  status          AuditPlanStatus   @default(PLANNED)
+  leadAuditorId   String
+  startDate       DateTime
+  endDate         DateTime
+  scopeSummary    String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant           Plant             @relation(fields: [plantId], references: [id], onDelete: Restrict)
+  leadAuditor     User              @relation("LeadAuditor", fields: [leadAuditorId], references: [id], onDelete: Restrict)
+  findings        AuditFinding[]
+
+  @@unique([organizationId, referenceNumber])
+  @@index([organizationId])
+  @@index([plantId])
+}
+
+model AuditFinding {
+  id              String            @id @default(uuid())
+  auditPlanId     String
+  grade           AuditFindingGrade
+  clauseReference String?
+  description     String
+  evidence        String?
+  isResolved      Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  auditPlan       AuditPlan         @relation(fields: [auditPlanId], references: [id], onDelete: Cascade)
+
+  @@index([auditPlanId])
+}
+
+// ==============================================================================
+// 18. TRAINING & COMPETENCY
+// ==============================================================================
+
+model TrainingCourse {
+  id              String            @id @default(uuid())
+  organizationId  String
+  code            String            // e.g. TRN-FIRE-01
+  title           String
+  description     String?
+  validityMonths  Int               @default(12)
+  targetRoles     Json?             // array of role codes
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  sessions        TrainingSession[]
+  records         TrainingRecord[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+model TrainingSession {
+  id              String            @id @default(uuid())
+  courseId        String
+  plantId         String
+  trainerId       String
+  sessionDate     DateTime
+  durationHours   Float             @default(2.0)
+  location        String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  course          TrainingCourse    @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  plant           Plant             @relation(fields: [plantId], references: [id], onDelete: Restrict)
+  trainer         User              @relation("TrainerUser", fields: [trainerId], references: [id], onDelete: Restrict)
+  records         TrainingRecord[]
+
+  @@index([courseId])
+  @@index([plantId])
+}
+
+model TrainingRecord {
+  id              String            @id @default(uuid())
+  sessionId       String?
+  courseId        String
+  userId          String
+  completionDate  DateTime          @default(now())
+  expiryDate      DateTime?
+  score           Float?
+  isCompliant     Boolean           @default(true)
+  certificateKey  String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  session         TrainingSession?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  course          TrainingCourse    @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  user            User              @relation("TrainedUser", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([courseId])
+}
+
+// ==============================================================================
+// 19. CONTRACTOR MANAGEMENT
+// ==============================================================================
+
+enum ContractorStatus {
+  ACTIVE
+  PENDING_APPROVAL
+  SUSPENDED
+  EXPIRED
+}
+
+model ContractorCompany {
+  id                String            @id @default(uuid())
+  organizationId    String
+  plantId           String
+  name              String
+  registrationNo    String
+  contactEmail      String
+  contactPhone      String?
+  status            ContractorStatus  @default(ACTIVE)
+  prequalifiedUntil DateTime?
+  safetyRating      Float             @default(100)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant             Plant             @relation(fields: [plantId], references: [id], onDelete: Restrict)
+  workers           ContractorWorker[]
+
+  @@unique([organizationId, registrationNo])
+  @@index([organizationId])
+  @@index([plantId])
+}
+
+model ContractorWorker {
+  id                  String            @id @default(uuid())
+  contractorId        String
+  fullName            String
+  trade               String            // Welder, Electrician, Rigger, Scaffolder, Helper
+  badgeNumber         String
+  inductionValidUntil DateTime?
+  medicalValidUntil   DateTime?
+  isPermitEligible    Boolean           @default(true)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  contractor          ContractorCompany @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+
+  @@unique([contractorId, badgeNumber])
+  @@index([contractorId])
+}
+
+// ==============================================================================
+// 20. OCCUPATIONAL HEALTH
+// ==============================================================================
+
+enum FitnessVerdict {
+  FIT_FOR_DUTY
+  FIT_WITH_RESTRICTIONS
+  UNFIT
+}
+
+model HealthRecord {
+  id              String            @id @default(uuid())
+  organizationId  String
+  plantId         String
+  userId          String
+  examType        String            // PRE_EMPLOYMENT, ANNUAL_PERIODIC, AUDIOMETRY, SPIROMETRY
+  examDate        DateTime
+  verdict         FitnessVerdict    @default(FIT_FOR_DUTY)
+  restrictions    String?
+  nextDueDate     DateTime?
+  doctorNotes     String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant           Plant             @relation(fields: [plantId], references: [id], onDelete: Restrict)
+  user            User              @relation("UserHealthRecord", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([organizationId])
+}
+
+// ==============================================================================
+// 21. ENVIRONMENTAL MONITORING
+// ==============================================================================
+
+model EnvironmentalMetric {
+  id              String            @id @default(uuid())
+  organizationId  String
+  plantId         String
+  metricType      String            // SCOPE_1_CO2, SCOPE_2_ELECTRICITY, WATER_CONSUMED, HAZARDOUS_WASTE, EFFLUENT_DISCHARGED
+  quantity        Float
+  unit            String            // MT, kWh, kL, kg
+  logDate         DateTime
+  notes           String?
+  createdAt       DateTime          @default(now())
+
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant           Plant             @relation(fields: [plantId], references: [id], onDelete: Restrict)
+
+  @@index([plantId, metricType])
+  @@index([logDate])
+}
+
+// ==============================================================================
+// 22. EMERGENCY MANAGEMENT
+// ==============================================================================
+
+model EmergencyDrill {
+  id                String            @id @default(uuid())
+  organizationId    String
+  plantId           String
+  drillType         String            // FIRE_EVACUATION, CHEMICAL_SPILL, CONFINED_SPACE_RESCUE
+  conductedDate     DateTime
+  durationMinutes   Int
+  participantsCount Int
+  evacuationScore   Float             // e.g. 95%
+  strengths         String?
+  improvements      String?
+  createdAt         DateTime          @default(now())
+
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant             Plant             @relation(fields: [plantId], references: [id], onDelete: Restrict)
+
+  @@index([plantId])
+}
+
+model EmergencyContact {
+  id              String            @id @default(uuid())
+  plantId         String
+  serviceName     String            // Fire Brigade, Local Hospital, Police, Site Commander
+  contactPerson   String?
+  phoneNumber     String
+  priorityOrder   Int               @default(1)
+
+  plant           Plant             @relation(fields: [plantId], references: [id], onDelete: Cascade)
+
+  @@index([plantId])
+}
+
+// ==============================================================================
+// 23. COMPLIANCE & LEGAL REGISTER
+// ==============================================================================
+
+model ComplianceObligation {
+  id                String            @id @default(uuid())
+  organizationId    String
+  plantId           String?
+  regulationName    String            // Factories Act 1948, Environment Protection Act, OSHA 1910
+  authority         String            // CPCB, SPCB, DISH, PESO
+  obligationTitle   String
+  description       String?
+  frequency         String            // ANNUAL, QUARTERLY, MONTHLY, CONTINUOUS
+  nextDueDate       DateTime?
+  complianceStatus  String            // COMPLIANT, IN_PROGRESS, NON_COMPLIANT
+  lastAuditDate     DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant             Plant?            @relation(fields: [plantId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([complianceStatus])
+}
+
+// ==============================================================================
+// 24. PLANT MANHOURS & STATISTICAL METRICS
+// ==============================================================================
+
+model PlantManhours {
+  id                  String        @id @default(uuid())
+  organizationId      String
+  plantId             String
+  year                Int
+  month               Int
+  employeeManhours    Float         @default(0)
+  contractorManhours  Float         @default(0)
+  safeWorkDays        Int           @default(30)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant               Plant         @relation(fields: [plantId], references: [id], onDelete: Restrict)
+
+  @@unique([plantId, year, month])
+  @@index([plantId])
 }

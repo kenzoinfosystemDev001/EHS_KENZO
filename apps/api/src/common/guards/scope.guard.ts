@@ -1,6 +1,11 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
-import { AuthenticatedUserContext } from '../../modules/auth/interfaces/auth.interface';
-import { AccessScope } from '@kenzo-ehs/types';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+} from "@nestjs/common";
+import { AuthenticatedUserContext } from "../../modules/auth/interfaces/auth.interface";
+import { AccessScope } from "@kenzo-ehs/types";
 
 @Injectable()
 export class ScopeGuard implements CanActivate {
@@ -9,17 +14,28 @@ export class ScopeGuard implements CanActivate {
     const user = request.user as AuthenticatedUserContext;
 
     if (!user) {
-      throw new ForbiddenException('User context missing');
+      throw new ForbiddenException("User context missing");
     }
 
     // Determine target plantId & departmentId from body, params, or query
-    const targetOrgId = request.params?.organizationId || request.body?.organizationId || user.organizationId;
-    const targetPlantId = request.params?.plantId || request.body?.plantId || request.query?.plantId;
-    const targetDeptId = request.params?.departmentId || request.body?.departmentId || request.query?.departmentId;
+    const targetOrgId =
+      request.params?.organizationId ||
+      request.body?.organizationId ||
+      user.organizationId;
+    const targetPlantId =
+      request.params?.plantId ||
+      request.body?.plantId ||
+      request.query?.plantId;
+    const targetDeptId =
+      request.params?.departmentId ||
+      request.body?.departmentId ||
+      request.query?.departmentId;
 
     // Strict Tenant Isolation: User can never access a different organization
     if (targetOrgId && targetOrgId !== user.organizationId) {
-      throw new ForbiddenException('Cross-tenant data access strictly prohibited');
+      throw new ForbiddenException(
+        "Cross-tenant data access strictly prohibited",
+      );
     }
 
     // If no specific plant is targeted, organization-level check passed
@@ -29,25 +45,36 @@ export class ScopeGuard implements CanActivate {
 
     // Check user's role scopes
     const hasOrgOrGlobalScope = user.roleScopes.some(
-      (s) => s.scope === AccessScope.SYSTEM || s.scope === AccessScope.ORGANIZATION || s.scope === AccessScope.ALL_PLANTS,
+      (s) =>
+        s.scope === AccessScope.SYSTEM ||
+        s.scope === AccessScope.ORGANIZATION ||
+        s.scope === AccessScope.ALL_PLANTS,
     );
 
     if (hasOrgOrGlobalScope) {
       return true;
     }
 
-    const userPlantScopes = user.roleScopes.filter((s) => s.scope === AccessScope.OWN_PLANT && s.plantId);
-    const userDeptScopes = user.roleScopes.filter((s) => s.scope === AccessScope.OWN_DEPARTMENT && s.departmentId);
+    const userPlantScopes = user.roleScopes.filter(
+      (s) => s.scope === AccessScope.OWN_PLANT && s.plantId,
+    );
+    const userDeptScopes = user.roleScopes.filter(
+      (s) => s.scope === AccessScope.OWN_DEPARTMENT && s.departmentId,
+    );
 
     // Check plant-level scope
     if (targetPlantId) {
       const allowedPlants = new Set([
         ...userPlantScopes.map((s) => s.plantId),
-        ...userDeptScopes.map((s) => s.plantId).filter((id): id is string => Boolean(id)),
+        ...userDeptScopes
+          .map((s) => s.plantId)
+          .filter((id): id is string => Boolean(id)),
       ]);
 
       if (!allowedPlants.has(targetPlantId)) {
-        throw new ForbiddenException(`Access denied for Plant [${targetPlantId}] outside user scope`);
+        throw new ForbiddenException(
+          `Access denied for Plant [${targetPlantId}] outside user scope`,
+        );
       }
     }
 
@@ -62,7 +89,9 @@ export class ScopeGuard implements CanActivate {
       if (!hasPlantCoverage) {
         const allowedDepts = new Set(userDeptScopes.map((s) => s.departmentId));
         if (!allowedDepts.has(targetDeptId)) {
-          throw new ForbiddenException(`Access denied for Department [${targetDeptId}] outside user scope`);
+          throw new ForbiddenException(
+            `Access denied for Department [${targetDeptId}] outside user scope`,
+          );
         }
       }
     }

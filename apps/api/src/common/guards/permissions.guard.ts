@@ -1,8 +1,13 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { PERMISSIONS_KEY } from '../decorators/require-permissions.decorator';
-import { Permission } from '@kenzo-ehs/types';
-import { AuthenticatedUserContext } from '../../modules/auth/interfaces/auth.interface';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+} from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { PERMISSIONS_KEY } from "../decorators/require-permissions.decorator";
+import { Permission } from "@kenzo-ehs/types";
+import { AuthenticatedUserContext } from "../../modules/auth/interfaces/auth.interface";
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -23,17 +28,21 @@ export class PermissionsGuard implements CanActivate {
     const user = request.user as AuthenticatedUserContext;
 
     if (!user || !user.permissions) {
-      throw new ForbiddenException('Access denied: User permissions missing');
+      throw new ForbiddenException("Access denied: User permissions missing");
     }
 
     // Check if user has ALL required permissions
     const userPermissionsSet = new Set(user.permissions);
-    const hasAll = requiredPermissions.every((perm) => userPermissionsSet.has(perm));
+    const hasAll = requiredPermissions.every((perm) =>
+      userPermissionsSet.has(perm),
+    );
 
     if (!hasAll) {
-      const missing = requiredPermissions.filter((p) => !userPermissionsSet.has(p));
+      const missing = requiredPermissions.filter(
+        (p) => !userPermissionsSet.has(p),
+      );
       throw new ForbiddenException(
-        `Access denied: Missing required permission(s) [${missing.join(', ')}]`,
+        `Access denied: Missing required permission(s) [${missing.join(", ")}]`,
       );
     }
 

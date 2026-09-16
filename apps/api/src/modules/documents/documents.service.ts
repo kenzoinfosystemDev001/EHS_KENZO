@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../database/prisma.service';
-import { CreateDocumentDto } from './dto/create-document.dto';
-import { AuthenticatedUserContext } from '../auth/interfaces/auth.interface';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../../database/prisma.service";
+import { CreateDocumentDto } from "./dto/create-document.dto";
+import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
 
 @Injectable()
 export class DocumentsService {
@@ -26,7 +26,11 @@ export class DocumentsService {
     });
   }
 
-  async findByEntity(entityType: string, entityId: string, user: AuthenticatedUserContext) {
+  async findByEntity(
+    entityType: string,
+    entityId: string,
+    user: AuthenticatedUserContext,
+  ) {
     return this.prisma.document.findMany({
       where: {
         organizationId: user.organizationId,
@@ -39,7 +43,7 @@ export class DocumentsService {
           select: { id: true, email: true, firstName: true, lastName: true },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 

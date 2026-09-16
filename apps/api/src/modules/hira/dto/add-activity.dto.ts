@@ -1,13 +1,22 @@
-import { IsNotEmpty, IsString, IsOptional, IsBoolean, IsInt, Min } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsInt,
+  Min,
+} from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class AddActivityDto {
-  @ApiProperty({ example: 'Chemical Tanker Offloading' })
+  @ApiProperty({ example: "Chemical Tanker Offloading" })
   @IsString()
   @IsNotEmpty()
   activityName!: string;
 
-  @ApiPropertyOptional({ example: 'Connecting transfer hose and pressurizing offloading line' })
+  @ApiPropertyOptional({
+    example: "Connecting transfer hose and pressurizing offloading line",
+  })
   @IsOptional()
   @IsString()
   description?: string;

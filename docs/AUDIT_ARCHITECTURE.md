@@ -7,6 +7,7 @@
 Every critical business action inside Kenzo EHS writes an immutable entry into the `audit_logs` table within the same database transaction as the mutation itself.
 
 ### Key Audit Attributes Captured:
+
 1. **`id`**: Unique UUID PK.
 2. **`organizationId`**: Tenant partition.
 3. **`plantId`**: Geographic facility identifier.

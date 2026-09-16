@@ -2,7 +2,7 @@
 
 **Document Version:** 1.0.0  
 **Author:** Kenzo Infosystems Enterprise Architecture Team  
-**System Status:** Phase 1 Operational Monolith  
+**System Status:** Phase 1 Operational Monolith
 
 ---
 
@@ -51,13 +51,13 @@ graph TD
 
 ## 3. Monorepo Structure
 
-| Package / Application | Role | Technology Stack |
-| :--- | :--- | :--- |
-| `apps/api` | Enterprise API & Engine | NestJS 11, Prisma ORM, Express, Helmet, Swagger |
-| `apps/web` | Enterprise Web Portal | Next.js 15 (App Router), TailwindCSS, TypeScript |
-| `apps/mobile` | Mobile Field Application | React Native / Expo Architecture (Reserved) |
-| `packages/types` | Enterprise Enums & Domain Interfaces | TypeScript |
-| `packages/validation` | Shared Zod Schemas | Zod |
-| `packages/utils` | Shared Utility Functions (Reference IDs) | TypeScript |
-| `packages/ui` | Design Tokens & Badges | TailwindCSS, React |
-| `packages/config` | ESLint, Prettier, TypeScript Configs | Base configurations |
+| Package / Application | Role                                     | Technology Stack                                 |
+| :-------------------- | :--------------------------------------- | :----------------------------------------------- |
+| `apps/api`            | Enterprise API & Engine                  | NestJS 11, Prisma ORM, Express, Helmet, Swagger  |
+| `apps/web`            | Enterprise Web Portal                    | Next.js 15 (App Router), TailwindCSS, TypeScript |
+| `apps/mobile`         | Mobile Field Application                 | React Native / Expo Architecture (Reserved)      |
+| `packages/types`      | Enterprise Enums & Domain Interfaces     | TypeScript                                       |
+| `packages/validation` | Shared Zod Schemas                       | Zod                                              |
+| `packages/utils`      | Shared Utility Functions (Reference IDs) | TypeScript                                       |
+| `packages/ui`         | Design Tokens & Badges                   | TailwindCSS, React                               |
+| `packages/config`     | ESLint, Prettier, TypeScript Configs     | Base configurations                              |

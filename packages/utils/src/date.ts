@@ -2,8 +2,12 @@ export function toIsoUtcString(date: Date = new Date()): string {
   return date.toISOString();
 }
 
-export function isDateOverdue(targetDate: Date | string, currentDate: Date = new Date()): boolean {
-  const target = typeof targetDate === 'string' ? new Date(targetDate) : targetDate;
+export function isDateOverdue(
+  targetDate: Date | string,
+  currentDate: Date = new Date(),
+): boolean {
+  const target =
+    typeof targetDate === "string" ? new Date(targetDate) : targetDate;
   return target.getTime() < currentDate.getTime();
 }
 

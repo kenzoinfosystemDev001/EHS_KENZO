@@ -2,22 +2,25 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-} from '@nestjs/common';
-import { PrismaService } from '../../database/prisma.service';
-import { AuditService } from '../audit/audit.service';
-import { OutboxService } from '../outbox/outbox.service';
-import { WorkflowService } from '../workflow/workflow.service';
-import { CreateIncidentDto } from './dto/create-incident.dto';
-import { IncidentActionDto } from './dto/incident-action.dto';
-import { AuthenticatedUserContext } from '../auth/interfaces/auth.interface';
-import { IncidentStatus } from '@prisma/client';
-import { AccessScope } from '@kenzo-ehs/types';
+} from "@nestjs/common";
+import { PrismaService } from "../../database/prisma.service";
+import { AuditService } from "../audit/audit.service";
+import { OutboxService } from "../outbox/outbox.service";
+import { WorkflowService } from "../workflow/workflow.service";
+import { CreateIncidentDto } from "./dto/create-incident.dto";
+import { IncidentActionDto } from "./dto/incident-action.dto";
+import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
+import { IncidentStatus } from "@prisma/client";
+import { AccessScope } from "@kenzo-ehs/types";
 
 const TX_CONFIG = { maxWait: 20000, timeout: 60000 };
 
 @Injectable()
 export class IncidentService {
-  private readonly INCIDENT_TRANSITIONS: Record<string, Record<string, string>> = {
+  private readonly INCIDENT_TRANSITIONS: Record<
+    string,
+    Record<string, string>
+  > = {
     [IncidentStatus.DRAFT]: {
       REPORT: IncidentStatus.REPORTED,
     },
@@ -53,7 +56,8 @@ export class IncidentService {
     const plant = await this.prisma.plant.findFirst({
       where: { id: dto.plantId, organizationId: user.organizationId },
     });
-    if (!plant) throw new BadRequestException('Plant not found or outside organization');
+    if (!plant)
+      throw new BadRequestException("Plant not found or outside organization");
     this.assertPlantAccess(plant.id, user);
 
     return this.prisma.$transaction(async (tx) => {
@@ -61,7 +65,7 @@ export class IncidentService {
         where: { organizationId: user.organizationId, plantId: plant.id },
       });
       const year = new Date().getFullYear();
-      const seq = String(count + 1).padStart(4, '0');
+      const seq = String(count + 1).padStart(4, "0");
       const referenceNumber = `INC-${year}-${plant.code}-${seq}`;
 
       const incident = await tx.incident.create({
@@ -86,16 +90,18 @@ export class IncidentService {
         include: {
           plant: { select: { id: true, code: true, name: true } },
           department: { select: { id: true, code: true, name: true } },
-          reportedBy: { select: { id: true, email: true, firstName: true, lastName: true } },
+          reportedBy: {
+            select: { id: true, email: true, firstName: true, lastName: true },
+          },
         },
       });
 
       await this.workflowService.getOrCreateInstance(
         user.organizationId,
-        'Incident',
+        "Incident",
         incident.id,
         IncidentStatus.DRAFT,
-        'INCIDENT_STANDARD_V1',
+        "INCIDENT_STANDARD_V1",
         tx,
       );
 
@@ -103,19 +109,22 @@ export class IncidentService {
         organizationId: user.organizationId,
         plantId: plant.id,
         actorId: user.id,
-        action: 'INCIDENT.CREATE',
-        entityType: 'Incident',
+        action: "INCIDENT.CREATE",
+        entityType: "Incident",
         entityId: incident.id,
-        afterState: { status: incident.status, referenceNumber: incident.referenceNumber },
-        reason: 'Incident created',
+        afterState: {
+          status: incident.status,
+          referenceNumber: incident.referenceNumber,
+        },
+        reason: "Incident created",
         tx,
       });
 
       await this.outboxService.emit({
         organizationId: user.organizationId,
-        aggregateType: 'INCIDENT',
+        aggregateType: "INCIDENT",
         aggregateId: incident.id,
-        eventType: 'INCIDENT_CREATED',
+        eventType: "INCIDENT_CREATED",
         payload: {
           incidentId: incident.id,
           referenceNumber: incident.referenceNumber,
@@ -155,9 +164,11 @@ export class IncidentService {
       include: {
         plant: { select: { id: true, code: true, name: true } },
         department: { select: { id: true, code: true, name: true } },
-        reportedBy: { select: { id: true, email: true, firstName: true, lastName: true } },
+        reportedBy: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -168,12 +179,20 @@ export class IncidentService {
         plant: true,
         department: true,
         area: true,
-        reportedBy: { select: { id: true, email: true, firstName: true, lastName: true } },
-        investigator: { select: { id: true, email: true, firstName: true, lastName: true } },
+        reportedBy: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        investigator: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
         injuries: true,
         witnesses: true,
-        rcaStudies: { select: { id: true, referenceNumber: true, status: true } },
-        capaRecords: { select: { id: true, referenceNumber: true, status: true } },
+        rcaStudies: {
+          select: { id: true, referenceNumber: true, status: true },
+        },
+        capaRecords: {
+          select: { id: true, referenceNumber: true, status: true },
+        },
       },
     });
 
@@ -201,11 +220,14 @@ export class IncidentService {
       );
     }
 
-    const statusUpdates: Record<string, any> = { status: nextState as IncidentStatus };
-    if (action === 'REPORT') statusUpdates.submittedAt = new Date();
-    if (action === 'CLASSIFY') statusUpdates.classifiedAt = new Date();
-    if (action === 'START_INVESTIGATION') statusUpdates.investigationStartedAt = new Date();
-    if (action === 'APPROVE_CLOSURE') statusUpdates.closedAt = new Date();
+    const statusUpdates: Record<string, any> = {
+      status: nextState as IncidentStatus,
+    };
+    if (action === "REPORT") statusUpdates.submittedAt = new Date();
+    if (action === "CLASSIFY") statusUpdates.classifiedAt = new Date();
+    if (action === "START_INVESTIGATION")
+      statusUpdates.investigationStartedAt = new Date();
+    if (action === "APPROVE_CLOSURE") statusUpdates.closedAt = new Date();
 
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.incident.update({
@@ -214,7 +236,14 @@ export class IncidentService {
       });
 
       await this.workflowService.executeTransition(
-        { entityType: 'Incident', entityId: incident.id, action, actor: user, comments: dto.comments, tx },
+        {
+          entityType: "Incident",
+          entityId: incident.id,
+          action,
+          actor: user,
+          comments: dto.comments,
+          tx,
+        },
         transitions,
       );
 
@@ -223,7 +252,7 @@ export class IncidentService {
         plantId: incident.plantId,
         actorId: user.id,
         action: `INCIDENT.${action}`,
-        entityType: 'Incident',
+        entityType: "Incident",
         entityId: incident.id,
         beforeState: { status: currentState },
         afterState: { status: nextState },
@@ -233,7 +262,7 @@ export class IncidentService {
 
       await this.outboxService.emit({
         organizationId: user.organizationId,
-        aggregateType: 'INCIDENT',
+        aggregateType: "INCIDENT",
         aggregateId: incident.id,
         eventType: `INCIDENT_${action}`,
         payload: {

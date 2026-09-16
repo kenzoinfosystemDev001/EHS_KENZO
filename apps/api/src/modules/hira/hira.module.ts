@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common';
-import { HiraService } from './hira.service';
-import { HiraController } from './hira.controller';
+import { Module } from "@nestjs/common";
+import { HiraService } from "./hira.service";
+import { HiraController } from "./hira.controller";
 
 @Module({
   controllers: [HiraController],

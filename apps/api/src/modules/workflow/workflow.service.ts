@@ -4,10 +4,10 @@ import {
   ForbiddenException,
   NotFoundException,
   Logger,
-} from '@nestjs/common';
-import { PrismaService } from '../../database/prisma.service';
-import { Prisma, WorkflowTaskStatus, WorkflowStatus } from '@prisma/client';
-import { AuthenticatedUserContext } from '../auth/interfaces/auth.interface';
+} from "@nestjs/common";
+import { PrismaService } from "../../database/prisma.service";
+import { Prisma, WorkflowTaskStatus, WorkflowStatus } from "@prisma/client";
+import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
 
 export interface TransitionParams {
   entityType: string;
@@ -97,7 +97,8 @@ export class WorkflowService {
     allowedTransitions: Record<string, Record<string, string>>, // [currentState][action] -> nextState
     requiredPermissionsByAction?: Record<string, string>,
   ): Promise<TransitionResult> {
-    const { entityType, entityId, action, actor, comments, payload, tx } = params;
+    const { entityType, entityId, action, actor, comments, payload, tx } =
+      params;
 
     // Find active workflow instance
     const instance = await tx.workflowInstance.findFirst({
@@ -106,11 +107,13 @@ export class WorkflowService {
         entityType,
         entityId,
       },
-      orderBy: { startedAt: 'desc' },
+      orderBy: { startedAt: "desc" },
     });
 
     if (!instance) {
-      throw new NotFoundException(`No workflow instance found for ${entityType} [${entityId}]`);
+      throw new NotFoundException(
+        `No workflow instance found for ${entityType} [${entityId}]`,
+      );
     }
 
     const currentState = instance.currentState;
@@ -118,9 +121,10 @@ export class WorkflowService {
 
     if (!nextState) {
       throw new BadRequestException(
-        `Invalid workflow action '${action}' from current state '${currentState}'. Permitted actions: ${Object.keys(
-          allowedTransitions[currentState] || {},
-        ).join(', ') || 'None (Terminal State)'}`,
+        `Invalid workflow action '${action}' from current state '${currentState}'. Permitted actions: ${
+          Object.keys(allowedTransitions[currentState] || {}).join(", ") ||
+          "None (Terminal State)"
+        }`,
       );
     }
 
@@ -140,8 +144,12 @@ export class WorkflowService {
       data: {
         currentState: nextState,
         contextData: (payload as Prisma.InputJsonValue) ?? undefined,
-        completedAt: nextState === 'ACTIVE' || nextState === 'CLOSED' ? new Date() : null,
-        status: nextState === 'ACTIVE' || nextState === 'CLOSED' ? WorkflowStatus.COMPLETED : WorkflowStatus.IN_PROGRESS,
+        completedAt:
+          nextState === "ACTIVE" || nextState === "CLOSED" ? new Date() : null,
+        status:
+          nextState === "ACTIVE" || nextState === "CLOSED"
+            ? WorkflowStatus.COMPLETED
+            : WorkflowStatus.IN_PROGRESS,
       },
     });
 
@@ -153,7 +161,7 @@ export class WorkflowService {
         fromState: currentState,
         toState: nextState,
         actorId: actor.id,
-        actorRoleCode: actor.roles[0] || 'USER',
+        actorRoleCode: actor.roles[0] || "USER",
         comments: comments ?? null,
         payload: (payload as Prisma.InputJsonValue) ?? Prisma.JsonNull,
       },
@@ -229,7 +237,7 @@ export class WorkflowService {
       include: {
         workflowInstance: true,
       },
-      orderBy: { dueAt: 'asc' },
+      orderBy: { dueAt: "asc" },
     });
   }
 
@@ -250,7 +258,7 @@ export class WorkflowService {
           select: { id: true, email: true, firstName: true, lastName: true },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 }

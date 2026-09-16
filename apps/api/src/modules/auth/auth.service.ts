@@ -3,15 +3,19 @@ import {
   UnauthorizedException,
   ForbiddenException,
   Logger,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../../database/prisma.service';
-import { LoginDto } from './dto/login.dto';
-import { RefreshTokenDto } from './dto/refresh.dto';
-import { AuthenticatedUserContext, JwtPayload, UserRoleScope } from './interfaces/auth.interface';
-import { AccessScope } from '@kenzo-ehs/types';
-import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { PrismaService } from "../../database/prisma.service";
+import { LoginDto } from "./dto/login.dto";
+import { RefreshTokenDto } from "./dto/refresh.dto";
+import {
+  AuthenticatedUserContext,
+  JwtPayload,
+  UserRoleScope,
+} from "./interfaces/auth.interface";
+import { AccessScope } from "@kenzo-ehs/types";
+import * as bcrypt from "bcrypt";
+import * as crypto from "crypto";
 
 @Injectable()
 export class AuthService {
@@ -60,28 +64,39 @@ export class AuthService {
 
     // Uniform authentication failure response to prevent user enumeration
     if (!user) {
-      this.logger.warn(`Failed login attempt for non-existent user: ${dto.email}`);
-      throw new UnauthorizedException('Invalid email or password');
+      this.logger.warn(
+        `Failed login attempt for non-existent user: ${dto.email}`,
+      );
+      throw new UnauthorizedException("Invalid email or password");
     }
 
     // Verify password hash
-    const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
+    const isPasswordValid = await bcrypt.compare(
+      dto.password,
+      user.passwordHash,
+    );
     if (!isPasswordValid) {
       this.logger.warn(`Failed password attempt for user: ${dto.email}`);
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException("Invalid email or password");
     }
 
     // Verify account status
-    if (user.status !== 'ACTIVE') {
-      this.logger.warn(`Login rejected for inactive/suspended account: ${dto.email} [${user.status}]`);
-      throw new ForbiddenException(`Account is ${user.status.toLowerCase()}. Please contact administrator.`);
+    if (user.status !== "ACTIVE") {
+      this.logger.warn(
+        `Login rejected for inactive/suspended account: ${dto.email} [${user.status}]`,
+      );
+      throw new ForbiddenException(
+        `Account is ${user.status.toLowerCase()}. Please contact administrator.`,
+      );
     }
 
     // Compile roles, permissions, and scopes
-    const { roleCodes, permissionCodes, roleScopes } = this.extractAuthData(user.userRoles);
+    const { roleCodes, permissionCodes, roleScopes } = this.extractAuthData(
+      user.userRoles,
+    );
 
     // Generate cryptographic refresh token & hash
-    const rawRefreshToken = crypto.randomBytes(40).toString('hex');
+    const rawRefreshToken = crypto.randomBytes(40).toString("hex");
     const refreshTokenHash = this.hashToken(rawRefreshToken);
 
     const refreshExpiryDays = 7;
@@ -177,17 +192,19 @@ export class AuthService {
     // Reuse detection or invalid session
     if (!session || session.isRevoked || session.expiresAt < new Date()) {
       if (session && session.isRevoked) {
-        this.logger.error(`Suspicious refresh token reuse detected for session: ${session.id}!`);
+        this.logger.error(
+          `Suspicious refresh token reuse detected for session: ${session.id}!`,
+        );
       }
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      throw new UnauthorizedException("Invalid or expired refresh token");
     }
 
-    if (session.user.status !== 'ACTIVE') {
-      throw new ForbiddenException('User account is no longer active');
+    if (session.user.status !== "ACTIVE") {
+      throw new ForbiddenException("User account is no longer active");
     }
 
     // Rotate refresh token
-    const newRawRefreshToken = crypto.randomBytes(40).toString('hex');
+    const newRawRefreshToken = crypto.randomBytes(40).toString("hex");
     const newRefreshTokenHash = this.hashToken(newRawRefreshToken);
 
     const newExpiresAt = new Date();
@@ -204,7 +221,9 @@ export class AuthService {
       },
     });
 
-    const { roleCodes, permissionCodes } = this.extractAuthData(session.user.userRoles);
+    const { roleCodes, permissionCodes } = this.extractAuthData(
+      session.user.userRoles,
+    );
 
     const jwtPayload: JwtPayload = {
       sub: session.user.id,
@@ -245,7 +264,10 @@ export class AuthService {
   /**
    * Get Current User Profile, Permissions & Scopes
    */
-  async getCurrentUser(userId: string, sessionId: string): Promise<AuthenticatedUserContext> {
+  async getCurrentUser(
+    userId: string,
+    sessionId: string,
+  ): Promise<AuthenticatedUserContext> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -268,11 +290,13 @@ export class AuthService {
       },
     });
 
-    if (!user || user.status !== 'ACTIVE') {
-      throw new UnauthorizedException('User not found or inactive');
+    if (!user || user.status !== "ACTIVE") {
+      throw new UnauthorizedException("User not found or inactive");
     }
 
-    const { roleCodes, permissionCodes, roleScopes } = this.extractAuthData(user.userRoles);
+    const { roleCodes, permissionCodes, roleScopes } = this.extractAuthData(
+      user.userRoles,
+    );
 
     return {
       id: user.id,
@@ -291,11 +315,13 @@ export class AuthService {
    * Helpers
    */
   private hashToken(token: string): string {
-    return crypto.createHash('sha256').update(token).digest('hex');
+    return crypto.createHash("sha256").update(token).digest("hex");
   }
 
   private extractAuthData(userRoles: any[]) {
-    const roleCodes = Array.from(new Set(userRoles.map((ur) => ur.role.code as string)));
+    const roleCodes = Array.from(
+      new Set(userRoles.map((ur) => ur.role.code as string)),
+    );
 
     const permissionCodesSet = new Set<string>();
     const roleScopes: UserRoleScope[] = [];

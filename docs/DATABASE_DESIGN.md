@@ -2,7 +2,7 @@
 
 **System Database:** PostgreSQL 16 (Hosted on Neon AWS US-East-2 / Docker)  
 **ORM:** Prisma 6.4.1  
-**Total Entities (Phase 1):** 23 Tables  
+**Total Entities (Phase 1):** 23 Tables
 
 ---
 

@@ -5,32 +5,32 @@ import {
   IsDateString,
   IsBoolean,
   IsEnum,
-} from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IncidentType, IncidentSeverity } from '@prisma/client';
+} from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IncidentType, IncidentSeverity } from "@prisma/client";
 
 export class CreateIncidentDto {
-  @ApiProperty({ description: 'Plant ID where incident occurred' })
+  @ApiProperty({ description: "Plant ID where incident occurred" })
   @IsString()
   @IsNotEmpty()
   plantId: string;
 
-  @ApiProperty({ description: 'Department ID' })
+  @ApiProperty({ description: "Department ID" })
   @IsString()
   @IsNotEmpty()
   departmentId: string;
 
-  @ApiPropertyOptional({ description: 'Area ID' })
+  @ApiPropertyOptional({ description: "Area ID" })
   @IsOptional()
   @IsString()
   areaId?: string;
 
-  @ApiProperty({ description: 'Brief incident title' })
+  @ApiProperty({ description: "Brief incident title" })
   @IsString()
   @IsNotEmpty()
   title: string;
 
-  @ApiProperty({ description: 'Detailed description of what happened' })
+  @ApiProperty({ description: "Detailed description of what happened" })
   @IsString()
   @IsNotEmpty()
   description: string;
@@ -43,7 +43,7 @@ export class CreateIncidentDto {
   @IsEnum(IncidentSeverity)
   severity: IncidentSeverity;
 
-  @ApiProperty({ description: 'Date/time of incident (ISO 8601)' })
+  @ApiProperty({ description: "Date/time of incident (ISO 8601)" })
   @IsDateString()
   incidentDate: string;
 

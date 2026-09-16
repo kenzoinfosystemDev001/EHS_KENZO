@@ -3,10 +3,10 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
-} from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { Request } from 'express';
+} from "@nestjs/common";
+import { Observable } from "rxjs";
+import { map } from "rxjs/operators";
+import { Request } from "express";
 
 export interface ResponseMeta {
   requestId: string;
@@ -24,20 +24,26 @@ export interface ApiResponseEnvelope<T> {
 }
 
 @Injectable()
-export class TransformInterceptor<T>
-  implements NestInterceptor<T, ApiResponseEnvelope<T>>
-{
+export class TransformInterceptor<T> implements NestInterceptor<
+  T,
+  ApiResponseEnvelope<T>
+> {
   intercept(
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<ApiResponseEnvelope<T>> {
     const req = context.switchToHttp().getRequest<Request>();
-    const requestId = (req.headers['x-request-id'] as string) || 'unknown';
+    const requestId = (req.headers["x-request-id"] as string) || "unknown";
 
     return next.handle().pipe(
       map((data) => {
         // If data contains pagination/meta wrapper from services
-        if (data && typeof data === 'object' && 'items' in data && 'total' in data) {
+        if (
+          data &&
+          typeof data === "object" &&
+          "items" in data &&
+          "total" in data
+        ) {
           const page = Number(req.query.page) || 1;
           const pageSize = Number(req.query.limit) || 20;
           const total = Number(data.total) || 0;

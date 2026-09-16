@@ -1,5 +1,5 @@
-import { Global, Module } from '@nestjs/common';
-import { OutboxService } from './outbox.service';
+import { Global, Module } from "@nestjs/common";
+import { OutboxService } from "./outbox.service";
 
 @Global()
 @Module({

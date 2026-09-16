@@ -1,4 +1,4 @@
-import { RiskLevel, ControlHierarchyType } from '@prisma/client';
+import { RiskLevel, ControlHierarchyType } from "@prisma/client";
 
 export interface ControlInput {
   type: ControlHierarchyType;
@@ -34,11 +34,14 @@ export class HiraRiskEngine {
    * Hierarchy Control Multipliers
    * Elimination provides the highest risk reduction; PPE provides the lowest.
    */
-  private static readonly HIERARCHY_WEIGHTS: Record<ControlHierarchyType, number> = {
-    [ControlHierarchyType.ELIMINATION]: 0.90,
+  private static readonly HIERARCHY_WEIGHTS: Record<
+    ControlHierarchyType,
+    number
+  > = {
+    [ControlHierarchyType.ELIMINATION]: 0.9,
     [ControlHierarchyType.SUBSTITUTION]: 0.75,
-    [ControlHierarchyType.ENGINEERING]: 0.60,
-    [ControlHierarchyType.ADMINISTRATIVE]: 0.30,
+    [ControlHierarchyType.ENGINEERING]: 0.6,
+    [ControlHierarchyType.ADMINISTRATIVE]: 0.3,
     [ControlHierarchyType.PPE]: 0.15,
   };
 
@@ -75,18 +78,23 @@ export class HiraRiskEngine {
     // Compute cumulative control reduction factor (capped at 80% total reduction)
     let totalReductionRatio = 0;
     for (const ctrl of controls) {
-      const weight = this.HIERARCHY_WEIGHTS[ctrl.type] || 0.20;
-      const efficiency = Math.max(0, Math.min(100, ctrl.effectivenessPercent)) / 100;
-      totalReductionRatio += weight * efficiency * 0.40;
+      const weight = this.HIERARCHY_WEIGHTS[ctrl.type] || 0.2;
+      const efficiency =
+        Math.max(0, Math.min(100, ctrl.effectivenessPercent)) / 100;
+      totalReductionRatio += weight * efficiency * 0.4;
     }
-    const cappedReduction = Math.min(0.80, totalReductionRatio);
+    const cappedReduction = Math.min(0.8, totalReductionRatio);
 
     // Residual Likelihood is primarily reduced by controls
-    const calculatedResidualLik = Math.max(1, Math.round(clampedLik * (1 - cappedReduction)));
+    const calculatedResidualLik = Math.max(
+      1,
+      Math.round(clampedLik * (1 - cappedReduction)),
+    );
     // Severe hazards maintain severity unless eliminated/substituted
     const hasEliminationOrSub = controls.some(
       (c) =>
-        (c.type === ControlHierarchyType.ELIMINATION || c.type === ControlHierarchyType.SUBSTITUTION) &&
+        (c.type === ControlHierarchyType.ELIMINATION ||
+          c.type === ControlHierarchyType.SUBSTITUTION) &&
         c.effectivenessPercent > 50,
     );
     const calculatedResidualSev = hasEliminationOrSub
@@ -94,13 +102,17 @@ export class HiraRiskEngine {
       : clampedSev;
 
     // Guaranteed floor of 1
-    const residualScore = Math.max(1, calculatedResidualSev * calculatedResidualLik);
+    const residualScore = Math.max(
+      1,
+      calculatedResidualSev * calculatedResidualLik,
+    );
     const residualLevel = this.getRiskLevel(residualScore);
 
     const isUnacceptable = residualLevel === RiskLevel.CRITICAL;
     const isAlarpJustified =
       residualLevel === RiskLevel.LOW ||
-      ((residualLevel === RiskLevel.MODERATE || residualLevel === RiskLevel.HIGH) &&
+      ((residualLevel === RiskLevel.MODERATE ||
+        residualLevel === RiskLevel.HIGH) &&
         Boolean(alarpJustification && alarpJustification.trim().length >= 5));
 
     return {

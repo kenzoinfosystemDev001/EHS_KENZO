@@ -1,7 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../database/prisma.service';
-import { CreateOrganizationDto, CreatePlantDto, CreateDepartmentDto } from './dto/master-data.dto';
-import { AuthenticatedUserContext } from '../auth/interfaces/auth.interface';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../../database/prisma.service";
+import {
+  CreateOrganizationDto,
+  CreatePlantDto,
+  CreateDepartmentDto,
+} from "./dto/master-data.dto";
+import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
 
 @Injectable()
 export class MasterDataService {
@@ -11,7 +15,7 @@ export class MasterDataService {
   async getOrganizations() {
     return this.prisma.organization.findMany({
       where: { isActive: true },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
   }
 
@@ -20,7 +24,7 @@ export class MasterDataService {
       data: {
         code: dto.code,
         name: dto.name,
-        slug: dto.slug || dto.code.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        slug: dto.slug || dto.code.toLowerCase().replace(/[^a-z0-9]/g, "-"),
         isActive: true,
       },
     });
@@ -35,7 +39,7 @@ export class MasterDataService {
           select: { id: true, code: true, name: true },
         },
       },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
   }
 
@@ -62,11 +66,14 @@ export class MasterDataService {
         plant: { select: { id: true, code: true, name: true } },
         areas: { select: { id: true, code: true, name: true } },
       },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
   }
 
-  async createDepartment(dto: CreateDepartmentDto, user: AuthenticatedUserContext) {
+  async createDepartment(
+    dto: CreateDepartmentDto,
+    user: AuthenticatedUserContext,
+  ) {
     return this.prisma.department.create({
       data: {
         organizationId: user.organizationId,
@@ -96,7 +103,7 @@ export class MasterDataService {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -126,7 +133,11 @@ export class MasterDataService {
     return foundUser;
   }
 
-  async getAreas(user: AuthenticatedUserContext, departmentId?: string, plantId?: string) {
+  async getAreas(
+    user: AuthenticatedUserContext,
+    departmentId?: string,
+    plantId?: string,
+  ) {
     const where: any = { organizationId: user.organizationId, isActive: true };
     if (departmentId) where.departmentId = departmentId;
     if (plantId) where.plantId = plantId;
@@ -135,11 +146,18 @@ export class MasterDataService {
       include: {
         department: { select: { id: true, code: true, name: true } },
       },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
   }
 
-  async createArea(dto: { organizationId: string; plantId: string; departmentId: string; code: string; name: string; description?: string }) {
+  async createArea(dto: {
+    organizationId: string;
+    plantId: string;
+    departmentId: string;
+    code: string;
+    name: string;
+    description?: string;
+  }) {
     return this.prisma.area.create({
       data: {
         organizationId: dto.organizationId,
@@ -153,7 +171,11 @@ export class MasterDataService {
     });
   }
 
-  async updateUserStatus(id: string, status: string, user: AuthenticatedUserContext) {
+  async updateUserStatus(
+    id: string,
+    status: string,
+    user: AuthenticatedUserContext,
+  ) {
     const target = await this.prisma.user.findFirst({
       where: { id, organizationId: user.organizationId },
     });
@@ -161,7 +183,13 @@ export class MasterDataService {
     return this.prisma.user.update({
       where: { id },
       data: { status: status as any },
-      select: { id: true, email: true, firstName: true, lastName: true, status: true },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        status: true,
+      },
     });
   }
 }

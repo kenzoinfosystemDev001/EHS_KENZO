@@ -5,6 +5,7 @@
 ## 1. Phase 1 Fully Implemented Modules
 
 ### Module 1: Hazard Identification & Risk Assessment (HIRA)
+
 - **Status:** Complete Vertical Slice (Production-Ready)
 - **Entities:** `HiraStudy`, `HiraTeamMember`, `HiraActivity`, `HiraHazard`, `HiraControl`, `HiraReview`, `HiraApproval`, `HiraVersion`
 - **Capabilities:**
@@ -15,6 +16,7 @@
   - Formal workflow lifecycle (`DRAFT` $\to$ `IN_PROGRESS` $\to$ `TEAM_REVIEW` $\to$ `APPROVAL_PENDING` $\to$ `APPROVED` $\to$ `ACTIVE`).
 
 ### Module 2: Unified Inbox & Workflow Engine
+
 - **Status:** Complete Vertical Slice
 - **Entities:** `WorkflowDefinition`, `WorkflowInstance`, `WorkflowStep`, `WorkflowTask`
 - **Capabilities:**
@@ -23,6 +25,7 @@
   - Immutable step history.
 
 ### Module 3: Authentication, Sessions & RBAC
+
 - **Status:** Complete
 - **Entities:** `User`, `Session`, `Role`, `Permission`, `RolePermission`, `UserRole`
 - **Capabilities:**
@@ -31,6 +34,7 @@
   - Cryptographic session rotation and server revocation.
 
 ### Module 4: Audit & Outbox Engine
+
 - **Status:** Complete
 - **Entities:** `AuditLog`, `OutboxEvent`
 - **Capabilities:**

@@ -2,13 +2,14 @@
 
 **Base Path:** `/api/v1`  
 **Protocol:** HTTPS REST / JSON  
-**Documentation:** OpenAPI 3.0 via Swagger UI (`http://localhost:4000/docs`)  
+**Documentation:** OpenAPI 3.0 via Swagger UI (`http://localhost:4000/docs`)
 
 ---
 
 ## 1. Response Envelope Formats
 
 ### Standard Success Envelope
+
 ```json
 {
   "success": true,
@@ -24,6 +25,7 @@
 ```
 
 ### Standard Error Envelope
+
 ```json
 {
   "success": false,
@@ -46,25 +48,25 @@
 
 ## 2. Core API Endpoint Matrix
 
-| Method | Endpoint | Description | Permission Required |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/auth/login` | Authenticate user, issue access/refresh tokens | Public |
-| `POST` | `/auth/refresh`| Rotate refresh token | Public |
-| `POST` | `/auth/logout` | Revoke active server session | Bearer JWT |
-| `GET` | `/auth/me` | Current user profile, roles, permissions | Bearer JWT |
-| `GET` | `/health` | Liveness health probe | Public |
-| `GET` | `/health/ready`| Readiness health probe (checks DB connectivity)| Public |
-| `GET` | `/plants` | List plants in organization | Bearer JWT |
-| `GET` | `/departments`| List departments in organization | Bearer JWT |
-| `GET` | `/inbox` | Unified inbox task aggregation | Bearer JWT |
-| `GET` | `/hira` | List HIRA studies | `HIRA.READ` |
-| `POST` | `/hira` | Create new HIRA study | `HIRA.CREATE` |
-| `GET` | `/hira/:id` | Get HIRA details & hazards | `HIRA.READ` |
-| `POST` | `/hira/:id/activities` | Add operational activity | `HIRA.UPDATE` |
-| `POST` | `/hira/:id/activities/:activityId/hazards` | Add hazard, controls, evaluate risk | `HIRA.UPDATE` |
-| `POST` | `/hira/:id/actions/submit` | Submit study for team review | `HIRA.SUBMIT` |
-| `POST` | `/hira/:id/actions/review` | Recommend study for approval | `HIRA.REVIEW` |
-| `POST` | `/hira/:id/actions/approve` | Formally approve study | `HIRA.APPROVE` |
-| `POST` | `/hira/:id/actions/reject` | Reject study back for rework | `HIRA.APPROVE` |
-| `POST` | `/hira/:id/actions/activate` | Activate approved study for site ops | `HIRA.ACTIVATE` |
-| `GET` | `/audit/entities/:type/:id` | Immutable audit trail for entity | `AUDIT_LOG.READ` |
+| Method | Endpoint                                   | Description                                     | Permission Required |
+| :----- | :----------------------------------------- | :---------------------------------------------- | :------------------ |
+| `POST` | `/auth/login`                              | Authenticate user, issue access/refresh tokens  | Public              |
+| `POST` | `/auth/refresh`                            | Rotate refresh token                            | Public              |
+| `POST` | `/auth/logout`                             | Revoke active server session                    | Bearer JWT          |
+| `GET`  | `/auth/me`                                 | Current user profile, roles, permissions        | Bearer JWT          |
+| `GET`  | `/health`                                  | Liveness health probe                           | Public              |
+| `GET`  | `/health/ready`                            | Readiness health probe (checks DB connectivity) | Public              |
+| `GET`  | `/plants`                                  | List plants in organization                     | Bearer JWT          |
+| `GET`  | `/departments`                             | List departments in organization                | Bearer JWT          |
+| `GET`  | `/inbox`                                   | Unified inbox task aggregation                  | Bearer JWT          |
+| `GET`  | `/hira`                                    | List HIRA studies                               | `HIRA.READ`         |
+| `POST` | `/hira`                                    | Create new HIRA study                           | `HIRA.CREATE`       |
+| `GET`  | `/hira/:id`                                | Get HIRA details & hazards                      | `HIRA.READ`         |
+| `POST` | `/hira/:id/activities`                     | Add operational activity                        | `HIRA.UPDATE`       |
+| `POST` | `/hira/:id/activities/:activityId/hazards` | Add hazard, controls, evaluate risk             | `HIRA.UPDATE`       |
+| `POST` | `/hira/:id/actions/submit`                 | Submit study for team review                    | `HIRA.SUBMIT`       |
+| `POST` | `/hira/:id/actions/review`                 | Recommend study for approval                    | `HIRA.REVIEW`       |
+| `POST` | `/hira/:id/actions/approve`                | Formally approve study                          | `HIRA.APPROVE`      |
+| `POST` | `/hira/:id/actions/reject`                 | Reject study back for rework                    | `HIRA.APPROVE`      |
+| `POST` | `/hira/:id/actions/activate`               | Activate approved study for site ops            | `HIRA.ACTIVATE`     |
+| `GET`  | `/audit/entities/:type/:id`                | Immutable audit trail for entity                | `AUDIT_LOG.READ`    |

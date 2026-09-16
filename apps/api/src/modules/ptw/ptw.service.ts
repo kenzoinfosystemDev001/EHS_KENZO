@@ -1,12 +1,16 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../../database/prisma.service';
-import { AuditService } from '../audit/audit.service';
-import { OutboxService } from '../outbox/outbox.service';
-import { WorkflowService } from '../workflow/workflow.service';
-import { CreatePtwDto, PtwActionDto } from './dto/ptw.dto';
-import { AuthenticatedUserContext } from '../auth/interfaces/auth.interface';
-import { PtwStatus } from '@prisma/client';
-import { AccessScope } from '@kenzo-ehs/types';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { PrismaService } from "../../database/prisma.service";
+import { AuditService } from "../audit/audit.service";
+import { OutboxService } from "../outbox/outbox.service";
+import { WorkflowService } from "../workflow/workflow.service";
+import { CreatePtwDto, PtwActionDto } from "./dto/ptw.dto";
+import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
+import { PtwStatus } from "@prisma/client";
+import { AccessScope } from "@kenzo-ehs/types";
 
 const TX_CONFIG = { maxWait: 20000, timeout: 60000 };
 
@@ -44,12 +48,14 @@ export class PtwService {
     const plant = await this.prisma.plant.findFirst({
       where: { id: dto.plantId, organizationId: user.organizationId },
     });
-    if (!plant) throw new BadRequestException('Plant not found');
+    if (!plant) throw new BadRequestException("Plant not found");
 
     return this.prisma.$transaction(async (tx) => {
-      const count = await tx.permitToWork.count({ where: { organizationId: user.organizationId, plantId: plant.id } });
+      const count = await tx.permitToWork.count({
+        where: { organizationId: user.organizationId, plantId: plant.id },
+      });
       const year = new Date().getFullYear();
-      const seq = String(count + 1).padStart(4, '0');
+      const seq = String(count + 1).padStart(4, "0");
       const referenceNumber = `PTW-${year}-${plant.code}-${seq}`;
 
       const ptw = await tx.permitToWork.create({
@@ -73,31 +79,45 @@ export class PtwService {
         include: {
           plant: { select: { id: true, code: true, name: true } },
           department: { select: { id: true, code: true, name: true } },
-          requestedBy: { select: { id: true, email: true, firstName: true, lastName: true } },
+          requestedBy: {
+            select: { id: true, email: true, firstName: true, lastName: true },
+          },
         },
       });
 
       await this.workflowService.getOrCreateInstance(
-        user.organizationId, 'PermitToWork', ptw.id, PtwStatus.DRAFT, 'PTW_STANDARD_V1', tx,
+        user.organizationId,
+        "PermitToWork",
+        ptw.id,
+        PtwStatus.DRAFT,
+        "PTW_STANDARD_V1",
+        tx,
       );
 
       await this.auditService.log({
         organizationId: user.organizationId,
         plantId: plant.id,
         actorId: user.id,
-        action: 'PTW.CREATE',
-        entityType: 'PermitToWork',
+        action: "PTW.CREATE",
+        entityType: "PermitToWork",
         entityId: ptw.id,
-        afterState: { status: ptw.status, referenceNumber: ptw.referenceNumber },
+        afterState: {
+          status: ptw.status,
+          referenceNumber: ptw.referenceNumber,
+        },
         tx,
       });
 
       await this.outboxService.emit({
         organizationId: user.organizationId,
-        aggregateType: 'PTW',
+        aggregateType: "PTW",
         aggregateId: ptw.id,
-        eventType: 'PTW_CREATED',
-        payload: { ptwId: ptw.id, referenceNumber: ptw.referenceNumber, category: ptw.category },
+        eventType: "PTW_CREATED",
+        payload: {
+          ptwId: ptw.id,
+          referenceNumber: ptw.referenceNumber,
+          category: ptw.category,
+        },
         tx,
       });
 
@@ -107,11 +127,18 @@ export class PtwService {
 
   async findAll(user: AuthenticatedUserContext, plantId?: string) {
     const isGlobal = user.roleScopes.some(
-      (s) => s.scope === AccessScope.SYSTEM || s.scope === AccessScope.ORGANIZATION || s.scope === AccessScope.ALL_PLANTS,
+      (s) =>
+        s.scope === AccessScope.SYSTEM ||
+        s.scope === AccessScope.ORGANIZATION ||
+        s.scope === AccessScope.ALL_PLANTS,
     );
     const where: any = { organizationId: user.organizationId, deletedAt: null };
     if (!isGlobal) {
-      where.plantId = { in: user.roleScopes.filter((s) => s.scope === AccessScope.OWN_PLANT && s.plantId).map((s) => s.plantId!) };
+      where.plantId = {
+        in: user.roleScopes
+          .filter((s) => s.scope === AccessScope.OWN_PLANT && s.plantId)
+          .map((s) => s.plantId!),
+      };
     }
     if (plantId) where.plantId = plantId;
 
@@ -119,9 +146,11 @@ export class PtwService {
       where,
       include: {
         plant: { select: { id: true, code: true, name: true } },
-        requestedBy: { select: { id: true, email: true, firstName: true, lastName: true } },
+        requestedBy: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
       },
-      orderBy: { plannedStartDate: 'asc' },
+      orderBy: { plannedStartDate: "asc" },
     });
   }
 
@@ -131,29 +160,57 @@ export class PtwService {
       include: {
         plant: true,
         department: true,
-        requestedBy: { select: { id: true, email: true, firstName: true, lastName: true } },
+        requestedBy: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
         isolationPoints: true,
       },
     });
-    if (!ptw || ptw.organizationId !== user.organizationId) throw new NotFoundException(`Permit [${id}] not found`);
+    if (!ptw || ptw.organizationId !== user.organizationId)
+      throw new NotFoundException(`Permit [${id}] not found`);
     return ptw;
   }
 
-  async executeAction(id: string, action: string, user: AuthenticatedUserContext, dto: PtwActionDto) {
+  async executeAction(
+    id: string,
+    action: string,
+    user: AuthenticatedUserContext,
+    dto: PtwActionDto,
+  ) {
     const ptw = await this.findById(id, user);
     const nextState = this.TRANSITIONS[ptw.status]?.[action];
-    if (!nextState) throw new BadRequestException(`Action '${action}' invalid from state '${ptw.status}'`);
+    if (!nextState)
+      throw new BadRequestException(
+        `Action '${action}' invalid from state '${ptw.status}'`,
+      );
 
     return this.prisma.$transaction(async (tx) => {
       const updates: any = { status: nextState as PtwStatus };
-      if (action === 'APPROVE') { updates.approvedById = user.id; updates.approvedAt = new Date(); }
-      if (action === 'ACTIVATE') updates.actualStartDate = new Date();
-      if (action === 'CLOSE') { updates.closedById = user.id; updates.actualEndDate = new Date(); updates.closedAt = new Date(); }
+      if (action === "APPROVE") {
+        updates.approvedById = user.id;
+        updates.approvedAt = new Date();
+      }
+      if (action === "ACTIVATE") updates.actualStartDate = new Date();
+      if (action === "CLOSE") {
+        updates.closedById = user.id;
+        updates.actualEndDate = new Date();
+        updates.closedAt = new Date();
+      }
 
-      const updated = await tx.permitToWork.update({ where: { id: ptw.id }, data: updates });
+      const updated = await tx.permitToWork.update({
+        where: { id: ptw.id },
+        data: updates,
+      });
 
       await this.workflowService.executeTransition(
-        { entityType: 'PermitToWork', entityId: ptw.id, action, actor: user, comments: dto.comments, tx },
+        {
+          entityType: "PermitToWork",
+          entityId: ptw.id,
+          action,
+          actor: user,
+          comments: dto.comments,
+          tx,
+        },
         this.TRANSITIONS,
       );
 
@@ -162,7 +219,7 @@ export class PtwService {
         plantId: ptw.plantId,
         actorId: user.id,
         action: `PTW.${action}`,
-        entityType: 'PermitToWork',
+        entityType: "PermitToWork",
         entityId: ptw.id,
         beforeState: { status: ptw.status },
         afterState: { status: nextState },
@@ -172,10 +229,15 @@ export class PtwService {
 
       await this.outboxService.emit({
         organizationId: user.organizationId,
-        aggregateType: 'PTW',
+        aggregateType: "PTW",
         aggregateId: ptw.id,
         eventType: `PTW_${action}`,
-        payload: { ptwId: ptw.id, fromStatus: ptw.status, toStatus: nextState, actorId: user.id },
+        payload: {
+          ptwId: ptw.id,
+          fromStatus: ptw.status,
+          toStatus: nextState,
+          actorId: user.id,
+        },
         tx,
       });
 

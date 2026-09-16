@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../database/prisma.service';
-import { AuthenticatedUserContext } from '../auth/interfaces/auth.interface';
-import { WorkflowTaskStatus, HiraStatus } from '@prisma/client';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../../database/prisma.service";
+import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
+import { WorkflowTaskStatus, HiraStatus } from "@prisma/client";
 
 @Injectable()
 export class InboxService {
@@ -25,23 +25,23 @@ export class InboxService {
       include: {
         workflowInstance: true,
       },
-      orderBy: { dueAt: 'asc' },
+      orderBy: { dueAt: "asc" },
     });
 
     // Categorize tasks into real sections
     const myTasks = activeTasks.filter((t) => t.assignedToUserId === user.id);
     const pendingApprovals = activeTasks.filter(
       (t) =>
-        t.stepKey.includes('APPROVAL') ||
+        t.stepKey.includes("APPROVAL") ||
         t.stepKey === HiraStatus.APPROVAL_PENDING,
     );
     const hiraReviews = activeTasks.filter(
       (t) =>
-        t.workflowInstance.entityType === 'HiraStudy' &&
+        t.workflowInstance.entityType === "HiraStudy" &&
         t.stepKey === HiraStatus.TEAM_REVIEW,
     );
     const capaActions = activeTasks.filter(
-      (t) => t.workflowInstance.entityType === 'Capa',
+      (t) => t.workflowInstance.entityType === "Capa",
     );
     const overdue = activeTasks.filter(
       (t) => t.dueAt && t.dueAt.getTime() < now.getTime(),

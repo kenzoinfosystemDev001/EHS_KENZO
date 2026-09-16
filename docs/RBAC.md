@@ -33,27 +33,27 @@
 
 ## 2. 19 Canonical Roles & Default Scopes
 
-| # | Role Key | Display Name | Default Scope | Primary Functional Responsibility |
-|---|---|---|---|---|
-| 1 | `WORKER` | Worker | `OWN_RECORDS` | Operational reporting of hazards/incidents, PTW receiver, assigned trainings. |
-| 2 | `CONTRACTOR_WORKMAN` | Contractor Workman | `OWN_RECORDS` | Contractor hazard reporting, permit execution, contractor site safety. |
-| 3 | `SUPERVISOR` | Supervisor | `OWN_DEPARTMENT` | First-line incident triage, departmental inspections, permit verification. |
-| 4 | `DEPARTMENT_HEAD` | Department Head | `OWN_DEPARTMENT` | Departmental HIRA approvals, incident sign-offs, CAPA resource allocation. |
-| 5 | `PERMIT_ISSUER` | Permit Issuer | `OWN_PLANT` | PTW risk evaluation, site checks, permit issuance/suspension/closure, LOTO. |
-| 6 | `SAFETY_OFFICER` | Safety Officer | `OWN_PLANT` | Daily audits, incident investigations, independent CAPA verification. |
-| 7 | `HSE_MANAGER` | HSE Manager | `OWN_PLANT` | Plant-level HIRA approval, incident classification, investigation lead appointment. |
-| 8 | `PLANT_HEAD` | Plant Head | `OWN_PLANT` | Highest plant authority; high-severity incident sign-off, major risk reviews. |
-| 9 | `MAINTENANCE_HEAD` | Maintenance Head | `OWN_PLANT` | Engineering controls, plant-wide LOTO protocols, maintenance safety. |
-| 10 | `TRAINER` | Trainer | `OWN_PLANT` | Safety training delivery, attendance logging, competency assessment. |
-| 11 | `LD_MANAGER` | L&D Manager | `ALL_PLANTS` | Enterprise curriculum management, training matrices, compliance certification. |
-| 12 | `ENVIRONMENT_MANAGER` | Environment Manager | `OWN_PLANT` | Environmental monitoring, emissions, waste manifests, statutory reporting. |
-| 13 | `CONTRACTOR_COORDINATOR` | Contractor Coordinator | `OWN_PLANT` | Contractor induction, safety compliance, pre-qualification audits. |
-| 14 | `OCCUPATIONAL_HEALTH_OFFICER` | Occupational Health Officer | `OWN_PLANT` | First-aid logging, medical injury assessments, hygiene records. |
-| 15 | `EMERGENCY_RESPONSE_COORDINATOR` | Emergency Response Coordinator| `OWN_PLANT` | Mock drills, emergency action plans, evacuation procedures. |
-| 16 | `INDUSTRIAL_HYGIENIST` | Industrial Hygienist | `ALL_PLANTS` | Noise, dust, chemical exposure surveys, IH risk assessments. |
-| 17 | `CORPORATE_HSE` | Corporate HSE Head | `ORGANIZATION` | Enterprise governance, multi-plant analytics, corporate incident reviews. |
-| 18 | `ADMIN` | Organization Admin | `ORGANIZATION` | Tenant user provisioning, plant setup, role assignments, system master data. |
-| 19 | `SYSTEM_ADMIN` | System Admin | `SYSTEM` | Platform multi-tenant provisioning, database maintenance, system health. |
+| #   | Role Key                         | Display Name                   | Default Scope    | Primary Functional Responsibility                                                   |
+| --- | -------------------------------- | ------------------------------ | ---------------- | ----------------------------------------------------------------------------------- |
+| 1   | `WORKER`                         | Worker                         | `OWN_RECORDS`    | Operational reporting of hazards/incidents, PTW receiver, assigned trainings.       |
+| 2   | `CONTRACTOR_WORKMAN`             | Contractor Workman             | `OWN_RECORDS`    | Contractor hazard reporting, permit execution, contractor site safety.              |
+| 3   | `SUPERVISOR`                     | Supervisor                     | `OWN_DEPARTMENT` | First-line incident triage, departmental inspections, permit verification.          |
+| 4   | `DEPARTMENT_HEAD`                | Department Head                | `OWN_DEPARTMENT` | Departmental HIRA approvals, incident sign-offs, CAPA resource allocation.          |
+| 5   | `PERMIT_ISSUER`                  | Permit Issuer                  | `OWN_PLANT`      | PTW risk evaluation, site checks, permit issuance/suspension/closure, LOTO.         |
+| 6   | `SAFETY_OFFICER`                 | Safety Officer                 | `OWN_PLANT`      | Daily audits, incident investigations, independent CAPA verification.               |
+| 7   | `HSE_MANAGER`                    | HSE Manager                    | `OWN_PLANT`      | Plant-level HIRA approval, incident classification, investigation lead appointment. |
+| 8   | `PLANT_HEAD`                     | Plant Head                     | `OWN_PLANT`      | Highest plant authority; high-severity incident sign-off, major risk reviews.       |
+| 9   | `MAINTENANCE_HEAD`               | Maintenance Head               | `OWN_PLANT`      | Engineering controls, plant-wide LOTO protocols, maintenance safety.                |
+| 10  | `TRAINER`                        | Trainer                        | `OWN_PLANT`      | Safety training delivery, attendance logging, competency assessment.                |
+| 11  | `LD_MANAGER`                     | L&D Manager                    | `ALL_PLANTS`     | Enterprise curriculum management, training matrices, compliance certification.      |
+| 12  | `ENVIRONMENT_MANAGER`            | Environment Manager            | `OWN_PLANT`      | Environmental monitoring, emissions, waste manifests, statutory reporting.          |
+| 13  | `CONTRACTOR_COORDINATOR`         | Contractor Coordinator         | `OWN_PLANT`      | Contractor induction, safety compliance, pre-qualification audits.                  |
+| 14  | `OCCUPATIONAL_HEALTH_OFFICER`    | Occupational Health Officer    | `OWN_PLANT`      | First-aid logging, medical injury assessments, hygiene records.                     |
+| 15  | `EMERGENCY_RESPONSE_COORDINATOR` | Emergency Response Coordinator | `OWN_PLANT`      | Mock drills, emergency action plans, evacuation procedures.                         |
+| 16  | `INDUSTRIAL_HYGIENIST`           | Industrial Hygienist           | `ALL_PLANTS`     | Noise, dust, chemical exposure surveys, IH risk assessments.                        |
+| 17  | `CORPORATE_HSE`                  | Corporate HSE Head             | `ORGANIZATION`   | Enterprise governance, multi-plant analytics, corporate incident reviews.           |
+| 18  | `ADMIN`                          | Organization Admin             | `ORGANIZATION`   | Tenant user provisioning, plant setup, role assignments, system master data.        |
+| 19  | `SYSTEM_ADMIN`                   | System Admin                   | `SYSTEM`         | Platform multi-tenant provisioning, database maintenance, system health.            |
 
 ---
 
@@ -61,87 +61,88 @@
 
 ### 3.1 Risk & HIRA (Hazard Identification & Risk Assessment)
 
-| Role | `HIRA.CREATE` | `HIRA.READ` | `HIRA.UPDATE` | `HIRA.SUBMIT` | `HIRA.REVIEW` | `HIRA.APPROVE` | `HIRA.OVERRIDE` | Scope |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| `WORKER` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `OWN_PLANT` (Read-only) |
-| `SUPERVISOR` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | `OWN_DEPARTMENT` |
-| `DEPARTMENT_HEAD` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | `OWN_DEPARTMENT` |
-| `SAFETY_OFFICER` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | `OWN_PLANT` |
-| `HSE_MANAGER` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `OWN_PLANT` |
-| `PLANT_HEAD` | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | `OWN_PLANT` |
-| `CORPORATE_HSE` | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | `ORGANIZATION` |
-| `ADMIN` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | `ORGANIZATION` |
+| Role              | `HIRA.CREATE` | `HIRA.READ` | `HIRA.UPDATE` | `HIRA.SUBMIT` | `HIRA.REVIEW` | `HIRA.APPROVE` | `HIRA.OVERRIDE` | Scope                   |
+| :---------------- | :-----------: | :---------: | :-----------: | :-----------: | :-----------: | :------------: | :-------------: | :---------------------- |
+| `WORKER`          |      ❌       |     ✅      |      ❌       |      ❌       |      ❌       |       ❌       |       ❌        | `OWN_PLANT` (Read-only) |
+| `SUPERVISOR`      |      ✅       |     ✅      |      ✅       |      ✅       |      ❌       |       ❌       |       ❌        | `OWN_DEPARTMENT`        |
+| `DEPARTMENT_HEAD` |      ✅       |     ✅      |      ✅       |      ✅       |      ✅       |       ✅       |       ❌        | `OWN_DEPARTMENT`        |
+| `SAFETY_OFFICER`  |      ✅       |     ✅      |      ✅       |      ✅       |      ✅       |       ❌       |       ❌        | `OWN_PLANT`             |
+| `HSE_MANAGER`     |      ✅       |     ✅      |      ✅       |      ✅       |      ✅       |       ✅       |       ✅        | `OWN_PLANT`             |
+| `PLANT_HEAD`      |      ❌       |     ✅      |      ❌       |      ❌       |      ✅       |       ✅       |       ✅        | `OWN_PLANT`             |
+| `CORPORATE_HSE`   |      ❌       |     ✅      |      ❌       |      ❌       |      ✅       |       ✅       |       ✅        | `ORGANIZATION`          |
+| `ADMIN`           |      ❌       |     ✅      |      ❌       |      ❌       |      ❌       |       ❌       |       ❌        | `ORGANIZATION`          |
 
 ---
 
 ### 3.2 Incidents, Investigation & RCA
 
-| Role | `INCIDENT.CREATE` | `INCIDENT.READ` | `INCIDENT.CLASSIFY` | `INCIDENT.INVESTIGATE` | `RCA.CREATE` | `RCA.APPROVE` | `INCIDENT.APPROVE` | `INCIDENT.CLOSE` | Scope |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| `WORKER` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | `OWN_RECORDS` |
-| `SUPERVISOR` | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | `OWN_DEPARTMENT` |
-| `SAFETY_OFFICER` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | `OWN_PLANT` |
-| `HSE_MANAGER` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `OWN_PLANT` |
-| `PLANT_HEAD` | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | `OWN_PLANT` |
-| `CORPORATE_HSE` | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | `ORGANIZATION` |
+| Role             | `INCIDENT.CREATE` | `INCIDENT.READ` | `INCIDENT.CLASSIFY` | `INCIDENT.INVESTIGATE` | `RCA.CREATE` | `RCA.APPROVE` | `INCIDENT.APPROVE` | `INCIDENT.CLOSE` | Scope            |
+| :--------------- | :---------------: | :-------------: | :-----------------: | :--------------------: | :----------: | :-----------: | :----------------: | :--------------: | :--------------- |
+| `WORKER`         |        ✅         |       ✅        |         ❌          |           ❌           |      ❌      |      ❌       |         ❌         |        ❌        | `OWN_RECORDS`    |
+| `SUPERVISOR`     |        ✅         |       ✅        |         ❌          |           ✅           |      ❌      |      ❌       |         ❌         |        ❌        | `OWN_DEPARTMENT` |
+| `SAFETY_OFFICER` |        ✅         |       ✅        |         ✅          |           ✅           |      ✅      |      ❌       |         ❌         |        ❌        | `OWN_PLANT`      |
+| `HSE_MANAGER`    |        ✅         |       ✅        |         ✅          |           ✅           |      ✅      |      ✅       |         ✅         |        ✅        | `OWN_PLANT`      |
+| `PLANT_HEAD`     |        ❌         |       ✅        |         ❌          |           ❌           |      ❌      |      ✅       |         ✅         |        ✅        | `OWN_PLANT`      |
+| `CORPORATE_HSE`  |        ❌         |       ✅        |         ❌          |           ❌           |      ❌      |      ✅       |         ✅         |        ✅        | `ORGANIZATION`   |
 
-*Note: High-severity incidents require dual sign-off from both `PLANT_HEAD` and `CORPORATE_HSE` before closure.*
+_Note: High-severity incidents require dual sign-off from both `PLANT_HEAD` and `CORPORATE_HSE` before closure._
 
 ---
 
 ### 3.3 CAPA (Corrective and Preventive Action)
 
-| Role | `CAPA.CREATE` | `CAPA.ASSIGN` | `CAPA.UPDATE` | `CAPA.EXECUTE` | `CAPA.VERIFY` | `CAPA.CLOSE` | Scope |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| `WORKER` / Actionee | ❌ | ❌ | ❌ | ✅ (Evidence) | ❌ | ❌ | `ASSIGNED_RECORDS` |
-| `SUPERVISOR` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | `OWN_DEPARTMENT` |
-| `DEPARTMENT_HEAD` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | `OWN_DEPARTMENT` |
-| `SAFETY_OFFICER` | ✅ | ✅ | ✅ | ❌ | ✅ (Independent) | ❌ | `OWN_PLANT` |
-| `HSE_MANAGER` | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | `OWN_PLANT` |
-| `PLANT_HEAD` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | `OWN_PLANT` |
-| `CORPORATE_HSE` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | `ORGANIZATION` |
+| Role                | `CAPA.CREATE` | `CAPA.ASSIGN` | `CAPA.UPDATE` | `CAPA.EXECUTE` |  `CAPA.VERIFY`   | `CAPA.CLOSE` | Scope              |
+| :------------------ | :-----------: | :-----------: | :-----------: | :------------: | :--------------: | :----------: | :----------------- |
+| `WORKER` / Actionee |      ❌       |      ❌       |      ❌       | ✅ (Evidence)  |        ❌        |      ❌      | `ASSIGNED_RECORDS` |
+| `SUPERVISOR`        |      ✅       |      ✅       |      ✅       |       ✅       |        ❌        |      ❌      | `OWN_DEPARTMENT`   |
+| `DEPARTMENT_HEAD`   |      ✅       |      ✅       |      ✅       |       ❌       |        ❌        |      ❌      | `OWN_DEPARTMENT`   |
+| `SAFETY_OFFICER`    |      ✅       |      ✅       |      ✅       |       ❌       | ✅ (Independent) |      ❌      | `OWN_PLANT`        |
+| `HSE_MANAGER`       |      ✅       |      ✅       |      ✅       |       ❌       |        ✅        |      ✅      | `OWN_PLANT`        |
+| `PLANT_HEAD`        |      ❌       |      ❌       |      ❌       |       ❌       |        ❌        |      ✅      | `OWN_PLANT`        |
+| `CORPORATE_HSE`     |      ❌       |      ❌       |      ❌       |       ❌       |        ❌        |      ✅      | `ORGANIZATION`     |
 
-*Security Constraint: Actionee (`CAPA.EXECUTE`) is strictly disallowed from performing `CAPA.VERIFY` on their own action.*
+_Security Constraint: Actionee (`CAPA.EXECUTE`) is strictly disallowed from performing `CAPA.VERIFY` on their own action._
 
 ---
 
 ### 3.4 Permit To Work (PTW) & LOTO
 
-| Role | `PTW.CREATE` | `PTW.READ` | `PTW.UPDATE` | `PTW.SUBMIT` | `PTW.APPROVE` | `PTW.CLOSE` | `LOTO.APPLY` | Scope |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| `WORKER` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | `OWN_RECORDS` |
-| `CONTRACTOR_WORKMAN`| ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | `OWN_RECORDS` |
-| `SUPERVISOR` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | `OWN_DEPARTMENT` |
-| `PERMIT_ISSUER` | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | `OWN_PLANT` |
-| `SAFETY_OFFICER` | ❌ | ✅ | ❌ | ❌ | ✅ (Review) | ❌ | ✅ | `OWN_PLANT` |
-| `MAINTENANCE_HEAD` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `OWN_PLANT` |
-| `HSE_MANAGER` | ❌ | ✅ | ❌ | ❌ | ✅ (High-Risk) | ✅ | ✅ | `OWN_PLANT` |
+| Role                 | `PTW.CREATE` | `PTW.READ` | `PTW.UPDATE` | `PTW.SUBMIT` | `PTW.APPROVE`  | `PTW.CLOSE` | `LOTO.APPLY` | Scope            |
+| :------------------- | :----------: | :--------: | :----------: | :----------: | :------------: | :---------: | :----------: | :--------------- |
+| `WORKER`             |      ✅      |     ✅     |      ✅      |      ✅      |       ❌       |     ❌      |      ❌      | `OWN_RECORDS`    |
+| `CONTRACTOR_WORKMAN` |      ✅      |     ✅     |      ✅      |      ✅      |       ❌       |     ❌      |      ❌      | `OWN_RECORDS`    |
+| `SUPERVISOR`         |      ✅      |     ✅     |      ✅      |      ✅      |       ❌       |     ❌      |      ❌      | `OWN_DEPARTMENT` |
+| `PERMIT_ISSUER`      |      ✅      |     ✅     |      ✅      |      ❌      |       ✅       |     ✅      |      ✅      | `OWN_PLANT`      |
+| `SAFETY_OFFICER`     |      ❌      |     ✅     |      ❌      |      ❌      |  ✅ (Review)   |     ❌      |      ✅      | `OWN_PLANT`      |
+| `MAINTENANCE_HEAD`   |      ✅      |     ✅     |      ✅      |      ✅      |       ✅       |     ✅      |      ✅      | `OWN_PLANT`      |
+| `HSE_MANAGER`        |      ❌      |     ✅     |      ❌      |      ❌      | ✅ (High-Risk) |     ✅      |      ✅      | `OWN_PLANT`      |
 
 ---
 
 ### 3.5 Administration & Governance
 
-| Role | `USER.CREATE` | `USER.READ` | `USER.UPDATE` | `ROLE.ASSIGN` | `ORGANIZATION.MANAGE` | `PLANT.MANAGE` | `AUDIT_LOG.READ` |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| `HSE_MANAGER` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ (`OWN_PLANT`) |
-| `PLANT_HEAD` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ (`OWN_PLANT`) |
-| `CORPORATE_HSE` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ (`ORGANIZATION`) |
-| `ADMIN` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (`ORGANIZATION`) |
-| `SYSTEM_ADMIN` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (`SYSTEM`) |
+| Role            | `USER.CREATE` | `USER.READ` | `USER.UPDATE` | `ROLE.ASSIGN` | `ORGANIZATION.MANAGE` | `PLANT.MANAGE` |  `AUDIT_LOG.READ`   |
+| :-------------- | :-----------: | :---------: | :-----------: | :-----------: | :-------------------: | :------------: | :-----------------: |
+| `HSE_MANAGER`   |      ❌       |     ✅      |      ❌       |      ❌       |          ❌           |       ❌       |  ✅ (`OWN_PLANT`)   |
+| `PLANT_HEAD`    |      ❌       |     ✅      |      ❌       |      ❌       |          ❌           |       ❌       |  ✅ (`OWN_PLANT`)   |
+| `CORPORATE_HSE` |      ❌       |     ✅      |      ❌       |      ❌       |          ❌           |       ❌       | ✅ (`ORGANIZATION`) |
+| `ADMIN`         |      ✅       |     ✅      |      ✅       |      ✅       |          ✅           |       ✅       | ✅ (`ORGANIZATION`) |
+| `SYSTEM_ADMIN`  |      ✅       |     ✅      |      ✅       |      ✅       |          ✅           |       ✅       |    ✅ (`SYSTEM`)    |
 
 ---
 
 ## 4. Enforcement Strategy in Code
 
 ### Backend Controller Example:
+
 ```typescript
-@Controller('hira')
+@Controller("hira")
 @UseGuards(JwtAuthGuard, PermissionsGuard, ScopeGuard)
 export class HiraController {
-  @Post(':id/actions/approve')
-  @RequirePermissions('HIRA.APPROVE')
+  @Post(":id/actions/approve")
+  @RequirePermissions("HIRA.APPROVE")
   async approveHira(
-    @Param('id') id: string,
+    @Param("id") id: string,
     @CurrentUser() user: AuthenticatedUserContext,
     @Body() dto: WorkflowActionDto,
   ) {

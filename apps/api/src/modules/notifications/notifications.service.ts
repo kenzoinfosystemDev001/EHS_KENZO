@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../database/prisma.service';
-import { NotificationPriority, NotificationChannel } from '@prisma/client';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../../database/prisma.service";
+import { NotificationPriority, NotificationChannel } from "@prisma/client";
 
 export interface SendNotificationParams {
   userId: string;
@@ -36,7 +36,7 @@ export class NotificationsService {
     const [items, unreadCount] = await Promise.all([
       this.prisma.notification.findMany({
         where: { userId },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         take: 50,
       }),
       this.prisma.notification.count({

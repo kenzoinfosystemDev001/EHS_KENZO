@@ -1,4 +1,4 @@
-import { AccessScope } from '@kenzo-ehs/types';
+import { AccessScope } from "@kenzo-ehs/types";
 
 export interface JwtPayload {
   sub: string; // User UUID

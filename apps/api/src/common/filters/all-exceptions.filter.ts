@@ -5,8 +5,8 @@ import {
   HttpException,
   HttpStatus,
   Logger,
-} from '@nestjs/common';
-import { Request, Response } from 'express';
+} from "@nestjs/common";
+import { Request, Response } from "express";
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -17,20 +17,21 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const requestId = (request.headers['x-request-id'] as string) || 'unknown';
+    const requestId = (request.headers["x-request-id"] as string) || "unknown";
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message: string | object = 'Internal server error occurred';
-    let errorType = 'InternalServerError';
+    let message: string | object = "Internal server error occurred";
+    let errorType = "InternalServerError";
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const res = exception.getResponse();
-      if (typeof res === 'string') {
+      if (typeof res === "string") {
         message = res;
-      } else if (typeof res === 'object' && res !== null) {
+      } else if (typeof res === "object" && res !== null) {
         message = (res as Record<string, unknown>).message || res;
-        errorType = (res as Record<string, unknown>).error as string || exception.name;
+        errorType =
+          ((res as Record<string, unknown>).error as string) || exception.name;
       }
     } else if (exception instanceof Error) {
       this.logger.error(
@@ -39,8 +40,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
       );
     }
 
-    const errorDetails = Array.isArray(message) ? message : (typeof message === 'object' && message !== null ? message : []);
-    const errorMessage = typeof message === 'string' ? message : 'An error occurred during request processing';
+    const errorDetails = Array.isArray(message)
+      ? message
+      : typeof message === "object" && message !== null
+        ? message
+        : [];
+    const errorMessage =
+      typeof message === "string"
+        ? message
+        : "An error occurred during request processing";
 
     response.status(status).json({
       success: false,

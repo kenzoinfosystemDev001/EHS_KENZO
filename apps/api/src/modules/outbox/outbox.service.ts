@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../database/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../../database/prisma.service";
+import { Prisma } from "@prisma/client";
 
 export interface EmitEventParams {
   organizationId: string;
@@ -48,7 +48,7 @@ export class OutboxService {
   async processPendingEvents(batchSize: number = 20): Promise<number> {
     const pendingEvents = await this.prisma.outboxEvent.findMany({
       where: { processedAt: null },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: "asc" },
       take: batchSize,
     });
 
@@ -57,7 +57,9 @@ export class OutboxService {
     let processedCount = 0;
     for (const event of pendingEvents) {
       try {
-        this.logger.log(`Dispatching outbox event [${event.id}]: ${event.eventType}`);
+        this.logger.log(
+          `Dispatching outbox event [${event.id}]: ${event.eventType}`,
+        );
         // Dispatch event to handlers (e.g. In-App Notification / Email / Analytics)
         await this.prisma.outboxEvent.update({
           where: { id: event.id },
@@ -65,7 +67,9 @@ export class OutboxService {
         });
         processedCount++;
       } catch (err: any) {
-        this.logger.error(`Failed to process outbox event [${event.id}]: ${err.message}`);
+        this.logger.error(
+          `Failed to process outbox event [${event.id}]: ${err.message}`,
+        );
         await this.prisma.outboxEvent.update({
           where: { id: event.id },
           data: {

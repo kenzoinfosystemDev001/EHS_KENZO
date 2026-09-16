@@ -1,10 +1,14 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../../database/prisma.service';
-import { JwtPayload, AuthenticatedUserContext, UserRoleScope } from '../interfaces/auth.interface';
-import { AccessScope } from '@kenzo-ehs/types';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { PassportStrategy } from "@nestjs/passport";
+import { ExtractJwt, Strategy } from "passport-jwt";
+import { ConfigService } from "@nestjs/config";
+import { PrismaService } from "../../../database/prisma.service";
+import {
+  JwtPayload,
+  AuthenticatedUserContext,
+  UserRoleScope,
+} from "../interfaces/auth.interface";
+import { AccessScope } from "@kenzo-ehs/types";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -16,8 +20,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey:
-        configService.get<string>('JWT_ACCESS_SECRET') ||
-        'kenzo_ehs_dev_jwt_access_secret_super_secure_key_2026_min32',
+        configService.get<string>("JWT_ACCESS_SECRET") ||
+        "kenzo_ehs_dev_jwt_access_secret_super_secure_key_2026_min32",
     });
   }
 
@@ -49,16 +53,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
 
     if (!session || session.isRevoked || session.expiresAt < new Date()) {
-      throw new UnauthorizedException('Session expired or revoked');
+      throw new UnauthorizedException("Session expired or revoked");
     }
 
     const { user } = session;
-    if (user.status !== 'ACTIVE') {
-      throw new UnauthorizedException('Account is inactive');
+    if (user.status !== "ACTIVE") {
+      throw new UnauthorizedException("Account is inactive");
     }
 
     // 2. Extract current live permissions & scopes
-    const roleCodes = Array.from(new Set(user.userRoles.map((ur) => ur.role.code as string)));
+    const roleCodes = Array.from(
+      new Set(user.userRoles.map((ur) => ur.role.code as string)),
+    );
     const permissionCodesSet = new Set<string>();
     const roleScopes: UserRoleScope[] = [];
 

@@ -1,4 +1,5 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -35,16 +36,16 @@ export async function apiClient<T>(
 ): Promise<ApiResponse<T>> {
   const doRequest = async (token: string | null) => {
     const headers = new Headers(options.headers || {});
-    if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
-      headers.set('Content-Type', 'application/json');
+    if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
+      headers.set("Content-Type", "application/json");
     }
-    if (token && !headers.has('Authorization')) {
-      headers.set('Authorization', `Bearer ${token}`);
+    if (token && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${token}`);
     }
 
     return fetch(
-      `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`,
-      { ...options, headers, credentials: 'include' },
+      `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`,
+      { ...options, headers, credentials: "include" },
     );
   };
 

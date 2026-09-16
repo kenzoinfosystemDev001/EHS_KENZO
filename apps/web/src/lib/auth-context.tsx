@@ -1,8 +1,16 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
 
 export interface UserProfile {
   id: string;
@@ -44,10 +52,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshingRef.current = (async () => {
       try {
         const res = await fetch(`${API_BASE}/auth/refresh`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken: '' }), // server reads from cookie
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken: "" }), // server reads from cookie
         });
         if (res.ok) {
           const data = await res.json();
@@ -76,10 +84,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         // Try to get fresh token via refresh cookie
         const res = await fetch(`${API_BASE}/auth/refresh`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken: '' }),
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken: "" }),
         });
         if (res.ok) {
           const data = await res.json();
@@ -88,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setAccessToken(token);
             // Fetch user profile
             const meRes = await fetch(`${API_BASE}/auth/me`, {
-              credentials: 'include',
+              credentials: "include",
               headers: { Authorization: `Bearer ${token}` },
             });
             if (meRes.ok) {
@@ -107,14 +115,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
     const data = await res.json();
     if (!data.success) {
-      throw new Error(data.message || 'Login failed');
+      throw new Error(data.message || "Login failed");
     }
     setAccessToken(data.data.accessToken);
     setUser(data.data.user);
@@ -124,8 +132,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       if (accessToken) {
         await fetch(`${API_BASE}/auth/logout`, {
-          method: 'POST',
-          credentials: 'include',
+          method: "POST",
+          credentials: "include",
           headers: { Authorization: `Bearer ${accessToken}` },
         });
       }
@@ -141,7 +149,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, isLoading, login, logout, refreshAccessToken, hasPermission }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        accessToken,
+        isLoading,
+        login,
+        logout,
+        refreshAccessToken,
+        hasPermission,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -149,6 +167,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 }

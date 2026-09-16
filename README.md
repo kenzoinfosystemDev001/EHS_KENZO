@@ -11,6 +11,7 @@
 Kenzo EHS is designed as an enterprise-grade Environment, Health & Safety Management Platform built for multi-tenant enterprise operations: multiple organizations, plants/sites, departments, thousands of employees, contractors, auditable workflows, and strict regulatory compliance.
 
 ### Core Architectural Principles
+
 1. **PostgreSQL is the Sole System of Record**:
    - Every authoritative business entity, workflow state, audit trail, and outbox event is persisted in PostgreSQL via Prisma ORM.
 2. **Backend Authoritative Enforcement**:
@@ -60,11 +61,13 @@ kenzo-ehs/
 ## 3. Getting Started
 
 ### Prerequisites
+
 - **Node.js**: `>= 20.0.0` (LTS recommended)
 - **pnpm**: `>= 9.0.0` (recommended: `pnpm@12.x`)
 - **Docker**: For PostgreSQL and Redis local infrastructure
 
 ### Installation
+
 ```bash
 # On Linux / macOS
 pnpm install
@@ -74,11 +77,13 @@ pnpm.cmd install
 ```
 
 ### Environment Configuration
+
 ```bash
 cp .env.example .env
 ```
 
 ### Development Scripts
+
 ```bash
 # Build all packages and applications
 pnpm run build
@@ -96,5 +101,6 @@ pnpm run dev:web
 ---
 
 ## 4. Documentation Index
+
 - [Initial Codebase Audit](file:///c:/Users/sujal.kumar/Downloads/EHS/docs/INITIAL_CODEBASE_AUDIT.md)
 - Work Plan & Specifications: `ESP-WorkPlan.docx`, `Phase-Implementation .docx`

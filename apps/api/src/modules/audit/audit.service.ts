@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../database/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../../database/prisma.service";
+import { Prisma } from "@prisma/client";
 
 export interface RecordAuditParams {
   organizationId: string;
@@ -45,8 +45,10 @@ export class AuditService {
         requestId: params.requestId ?? null,
         ipAddress: params.ipAddress ?? null,
         userAgent: params.userAgent ?? null,
-        beforeState: (params.beforeState as Prisma.InputJsonValue) ?? Prisma.JsonNull,
-        afterState: (params.afterState as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+        beforeState:
+          (params.beforeState as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+        afterState:
+          (params.afterState as Prisma.InputJsonValue) ?? Prisma.JsonNull,
         diff: (diff as Prisma.InputJsonValue) ?? Prisma.JsonNull,
         reason: params.reason ?? null,
         metadata: (params.metadata as Prisma.InputJsonValue) ?? Prisma.JsonNull,
@@ -77,7 +79,7 @@ export class AuditService {
           entityType,
           entityId,
         },
-        orderBy: { timestamp: 'desc' },
+        orderBy: { timestamp: "desc" },
         skip,
         take,
         include: {

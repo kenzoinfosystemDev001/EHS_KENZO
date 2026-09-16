@@ -3,20 +3,25 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
-} from '@nestjs/common';
-import { PrismaService } from '../../database/prisma.service';
-import { AuditService } from '../audit/audit.service';
-import { OutboxService } from '../outbox/outbox.service';
-import { WorkflowService } from '../workflow/workflow.service';
-import { HiraRiskEngine } from './hira-risk.engine';
-import { CreateHiraStudyDto } from './dto/create-hira-study.dto';
-import { AddActivityDto } from './dto/add-activity.dto';
-import { AddHazardDto } from './dto/add-hazard.dto';
-import { HiraActionDto } from './dto/hira-action.dto';
-import { AuthenticatedUserContext } from '../auth/interfaces/auth.interface';
-import { HiraStatus, HiraApprovalDecision, HiraReviewDecision, RiskLevel } from '@prisma/client';
-import { AccessScope, Permissions } from '@kenzo-ehs/types';
-import { formatReferenceId } from '@kenzo-ehs/utils';
+} from "@nestjs/common";
+import { PrismaService } from "../../database/prisma.service";
+import { AuditService } from "../audit/audit.service";
+import { OutboxService } from "../outbox/outbox.service";
+import { WorkflowService } from "../workflow/workflow.service";
+import { HiraRiskEngine } from "./hira-risk.engine";
+import { CreateHiraStudyDto } from "./dto/create-hira-study.dto";
+import { AddActivityDto } from "./dto/add-activity.dto";
+import { AddHazardDto } from "./dto/add-hazard.dto";
+import { HiraActionDto } from "./dto/hira-action.dto";
+import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
+import {
+  HiraStatus,
+  HiraApprovalDecision,
+  HiraReviewDecision,
+  RiskLevel,
+} from "@prisma/client";
+import { AccessScope, Permissions } from "@kenzo-ehs/types";
+import { formatReferenceId } from "@kenzo-ehs/utils";
 
 const TX_CONFIG = { maxWait: 20000, timeout: 60000 };
 
@@ -62,7 +67,9 @@ export class HiraService {
     });
 
     if (!plant) {
-      throw new BadRequestException(`Plant not found or does not belong to organization`);
+      throw new BadRequestException(
+        `Plant not found or does not belong to organization`,
+      );
     }
 
     // Verify plant scope
@@ -74,7 +81,12 @@ export class HiraService {
         where: { organizationId: user.organizationId, plantId: plant.id },
       });
       const year = new Date().getFullYear();
-      const referenceNumber = formatReferenceId('HIRA', year, plant.code, count + 1);
+      const referenceNumber = formatReferenceId(
+        "HIRA",
+        year,
+        plant.code,
+        count + 1,
+      );
 
       const study = await tx.hiraStudy.create({
         data: {
@@ -99,7 +111,12 @@ export class HiraService {
           teamMembers: {
             include: {
               user: {
-                select: { id: true, email: true, firstName: true, lastName: true },
+                select: {
+                  id: true,
+                  email: true,
+                  firstName: true,
+                  lastName: true,
+                },
               },
             },
           },
@@ -111,10 +128,10 @@ export class HiraService {
       // Initialize workflow instance
       await this.workflowService.getOrCreateInstance(
         user.organizationId,
-        'HiraStudy',
+        "HiraStudy",
         study.id,
         HiraStatus.DRAFT,
-        'HIRA_STUDY_STANDARD_V1',
+        "HIRA_STUDY_STANDARD_V1",
         tx,
       );
 
@@ -123,20 +140,20 @@ export class HiraService {
         organizationId: user.organizationId,
         plantId: plant.id,
         actorId: user.id,
-        action: 'HIRA.CREATE',
-        entityType: 'HiraStudy',
+        action: "HIRA.CREATE",
+        entityType: "HiraStudy",
         entityId: study.id,
         afterState: study as unknown as Record<string, unknown>,
-        reason: 'Initial HIRA study creation',
+        reason: "Initial HIRA study creation",
         tx,
       });
 
       // Outbox Event
       await this.outboxService.emit({
         organizationId: user.organizationId,
-        aggregateType: 'HIRA',
+        aggregateType: "HIRA",
         aggregateId: study.id,
-        eventType: 'HIRA_STUDY_CREATED',
+        eventType: "HIRA_STUDY_CREATED",
         payload: {
           studyId: study.id,
           referenceNumber: study.referenceNumber,
@@ -161,7 +178,10 @@ export class HiraService {
 
     // Filter by allowed plants if scoped
     const isGlobal = user.roleScopes.some(
-      (s) => s.scope === AccessScope.SYSTEM || s.scope === AccessScope.ORGANIZATION || s.scope === AccessScope.ALL_PLANTS,
+      (s) =>
+        s.scope === AccessScope.SYSTEM ||
+        s.scope === AccessScope.ORGANIZATION ||
+        s.scope === AccessScope.ALL_PLANTS,
     );
 
     if (!isGlobal) {
@@ -181,12 +201,14 @@ export class HiraService {
       include: {
         plant: { select: { id: true, code: true, name: true } },
         department: { select: { id: true, code: true, name: true } },
-        leader: { select: { id: true, email: true, firstName: true, lastName: true } },
+        leader: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
         _count: {
           select: { activities: true, teamMembers: true },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -200,14 +222,23 @@ export class HiraService {
         plant: true,
         department: true,
         area: true,
-        leader: { select: { id: true, email: true, firstName: true, lastName: true } },
+        leader: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
         teamMembers: {
           include: {
-            user: { select: { id: true, email: true, firstName: true, lastName: true } },
+            user: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
           },
         },
         activities: {
-          orderBy: { sequenceOrder: 'asc' },
+          orderBy: { sequenceOrder: "asc" },
           include: {
             hazards: {
               include: {
@@ -217,15 +248,29 @@ export class HiraService {
           },
         },
         reviews: {
-          orderBy: { reviewedAt: 'desc' },
+          orderBy: { reviewedAt: "desc" },
           include: {
-            reviewer: { select: { id: true, email: true, firstName: true, lastName: true } },
+            reviewer: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
           },
         },
         approvals: {
-          orderBy: { approvedAt: 'desc' },
+          orderBy: { approvedAt: "desc" },
           include: {
-            approver: { select: { id: true, email: true, firstName: true, lastName: true } },
+            approver: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
           },
         },
       },
@@ -243,11 +288,20 @@ export class HiraService {
   /**
    * Add Activity to HIRA Study
    */
-  async addActivity(studyId: string, dto: AddActivityDto, user: AuthenticatedUserContext) {
+  async addActivity(
+    studyId: string,
+    dto: AddActivityDto,
+    user: AuthenticatedUserContext,
+  ) {
     const study = await this.findById(studyId, user);
 
-    if (study.status === HiraStatus.APPROVED || study.status === HiraStatus.ACTIVE) {
-      throw new BadRequestException('Cannot modify activities on an approved or active HIRA study');
+    if (
+      study.status === HiraStatus.APPROVED ||
+      study.status === HiraStatus.ACTIVE
+    ) {
+      throw new BadRequestException(
+        "Cannot modify activities on an approved or active HIRA study",
+      );
     }
 
     return this.prisma.hiraActivity.create({
@@ -272,8 +326,13 @@ export class HiraService {
   ) {
     const study = await this.findById(studyId, user);
 
-    if (study.status === HiraStatus.APPROVED || study.status === HiraStatus.ACTIVE) {
-      throw new BadRequestException('Cannot add hazards to an approved or active HIRA study');
+    if (
+      study.status === HiraStatus.APPROVED ||
+      study.status === HiraStatus.ACTIVE
+    ) {
+      throw new BadRequestException(
+        "Cannot add hazards to an approved or active HIRA study",
+      );
     }
 
     const activity = await this.prisma.hiraActivity.findFirst({
@@ -281,7 +340,9 @@ export class HiraService {
     });
 
     if (!activity) {
-      throw new NotFoundException(`Activity [${activityId}] not found in study [${studyId}]`);
+      throw new NotFoundException(
+        `Activity [${activityId}] not found in study [${studyId}]`,
+      );
     }
 
     // SERVER-SIDE RISK CALCULATION
@@ -333,11 +394,11 @@ export class HiraService {
 
         await this.workflowService.executeTransition(
           {
-            entityType: 'HiraStudy',
+            entityType: "HiraStudy",
             entityId: study.id,
-            action: 'SUBMIT',
+            action: "SUBMIT",
             actor: user,
-            comments: 'Initial hazard added; moving study to IN_PROGRESS',
+            comments: "Initial hazard added; moving study to IN_PROGRESS",
             tx,
           },
           this.HIRA_TRANSITIONS,
@@ -352,11 +413,20 @@ export class HiraService {
    * Action: Submit Study for Review
    * Precondition: Must contain at least one activity and hazard
    */
-  async submitStudy(id: string, user: AuthenticatedUserContext, dto: HiraActionDto) {
+  async submitStudy(
+    id: string,
+    user: AuthenticatedUserContext,
+    dto: HiraActionDto,
+  ) {
     const study = await this.findById(id, user);
 
-    if (study.status !== HiraStatus.IN_PROGRESS && study.status !== HiraStatus.DRAFT) {
-      throw new BadRequestException(`Study in state '${study.status}' cannot be submitted for review`);
+    if (
+      study.status !== HiraStatus.IN_PROGRESS &&
+      study.status !== HiraStatus.DRAFT
+    ) {
+      throw new BadRequestException(
+        `Study in state '${study.status}' cannot be submitted for review`,
+      );
     }
 
     const hazardCount = await this.prisma.hiraHazard.count({
@@ -364,7 +434,9 @@ export class HiraService {
     });
 
     if (hazardCount === 0) {
-      throw new BadRequestException('HIRA study must contain at least one hazard assessment before submission');
+      throw new BadRequestException(
+        "HIRA study must contain at least one hazard assessment before submission",
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -378,9 +450,9 @@ export class HiraService {
 
       const transition = await this.workflowService.executeTransition(
         {
-          entityType: 'HiraStudy',
+          entityType: "HiraStudy",
           entityId: study.id,
-          action: 'SUBMIT_REVIEW',
+          action: "SUBMIT_REVIEW",
           actor: user,
           comments: dto.comments,
           tx,
@@ -392,7 +464,7 @@ export class HiraService {
       await this.workflowService.createTask(
         transition.instanceId,
         HiraStatus.TEAM_REVIEW,
-        'SAFETY_OFFICER',
+        "SAFETY_OFFICER",
         undefined,
         48,
         tx,
@@ -403,8 +475,8 @@ export class HiraService {
         organizationId: user.organizationId,
         plantId: study.plantId,
         actorId: user.id,
-        action: 'HIRA.SUBMIT',
-        entityType: 'HiraStudy',
+        action: "HIRA.SUBMIT",
+        entityType: "HiraStudy",
         entityId: study.id,
         beforeState: { status: study.status },
         afterState: { status: updatedStudy.status },
@@ -415,9 +487,9 @@ export class HiraService {
       // Outbox Event
       await this.outboxService.emit({
         organizationId: user.organizationId,
-        aggregateType: 'HIRA',
+        aggregateType: "HIRA",
         aggregateId: study.id,
-        eventType: 'HIRA_STUDY_SUBMITTED',
+        eventType: "HIRA_STUDY_SUBMITTED",
         payload: {
           studyId: study.id,
           referenceNumber: study.referenceNumber,
@@ -437,16 +509,20 @@ export class HiraService {
     id: string,
     user: AuthenticatedUserContext,
     dto: HiraActionDto,
-    decision: 'RECOMMEND' | 'REQUEST_REWORK',
+    decision: "RECOMMEND" | "REQUEST_REWORK",
   ) {
     const study = await this.findById(id, user);
 
     if (study.status !== HiraStatus.TEAM_REVIEW) {
-      throw new BadRequestException(`Study in state '${study.status}' is not in TEAM_REVIEW`);
+      throw new BadRequestException(
+        `Study in state '${study.status}' is not in TEAM_REVIEW`,
+      );
     }
 
     const nextStatus =
-      decision === 'RECOMMEND' ? HiraStatus.APPROVAL_PENDING : HiraStatus.IN_PROGRESS;
+      decision === "RECOMMEND"
+        ? HiraStatus.APPROVAL_PENDING
+        : HiraStatus.IN_PROGRESS;
 
     return this.prisma.$transaction(async (tx) => {
       const updatedStudy = await tx.hiraStudy.update({
@@ -463,7 +539,7 @@ export class HiraService {
           hiraStudyId: study.id,
           reviewerId: user.id,
           decision:
-            decision === 'RECOMMEND'
+            decision === "RECOMMEND"
               ? HiraReviewDecision.RECOMMENDED
               : HiraReviewDecision.REWORK_REQUIRED,
           comments: dto.comments,
@@ -472,7 +548,7 @@ export class HiraService {
 
       const transition = await this.workflowService.executeTransition(
         {
-          entityType: 'HiraStudy',
+          entityType: "HiraStudy",
           entityId: study.id,
           action: decision,
           actor: user,
@@ -482,12 +558,12 @@ export class HiraService {
         this.HIRA_TRANSITIONS,
       );
 
-      if (decision === 'RECOMMEND') {
+      if (decision === "RECOMMEND") {
         // Create task for Plant Head approval
         await this.workflowService.createTask(
           transition.instanceId,
           HiraStatus.APPROVAL_PENDING,
-          'PLANT_HEAD',
+          "PLANT_HEAD",
           undefined,
           72,
           tx,
@@ -498,8 +574,8 @@ export class HiraService {
         organizationId: user.organizationId,
         plantId: study.plantId,
         actorId: user.id,
-        action: 'HIRA.REVIEW',
-        entityType: 'HiraStudy',
+        action: "HIRA.REVIEW",
+        entityType: "HiraStudy",
         entityId: study.id,
         beforeState: { status: study.status },
         afterState: { status: updatedStudy.status },
@@ -515,11 +591,17 @@ export class HiraService {
    * Action: Approve Study (Approval Pending -> Approved)
    * Precondition: Unacceptable residual risk requires explicit override and permission HIRA.OVERRIDE_UNACCEPTABLE
    */
-  async approveStudy(id: string, user: AuthenticatedUserContext, dto: HiraActionDto) {
+  async approveStudy(
+    id: string,
+    user: AuthenticatedUserContext,
+    dto: HiraActionDto,
+  ) {
     const study = await this.findById(id, user);
 
     if (study.status !== HiraStatus.APPROVAL_PENDING) {
-      throw new BadRequestException(`Study in state '${study.status}' is not pending approval`);
+      throw new BadRequestException(
+        `Study in state '${study.status}' is not pending approval`,
+      );
     }
 
     // Check for unacceptable residual risks
@@ -534,12 +616,12 @@ export class HiraService {
     if (hasCriticalRisk) {
       if (!dto.overrideUnacceptableRisk) {
         throw new BadRequestException(
-          'HIRA contains critical/unacceptable residual risk. Approval requires explicit override.',
+          "HIRA contains critical/unacceptable residual risk. Approval requires explicit override.",
         );
       }
       if (!user.permissions.includes(Permissions.HIRA_OVERRIDE_UNACCEPTABLE)) {
         throw new ForbiddenException(
-          'User lacks required permission HIRA.OVERRIDE_UNACCEPTABLE to approve critical residual risk',
+          "User lacks required permission HIRA.OVERRIDE_UNACCEPTABLE to approve critical residual risk",
         );
       }
     }
@@ -571,9 +653,9 @@ export class HiraService {
 
       await this.workflowService.executeTransition(
         {
-          entityType: 'HiraStudy',
+          entityType: "HiraStudy",
           entityId: study.id,
-          action: 'APPROVE',
+          action: "APPROVE",
           actor: user,
           comments: dto.comments,
           tx,
@@ -585,8 +667,8 @@ export class HiraService {
         organizationId: user.organizationId,
         plantId: study.plantId,
         actorId: user.id,
-        action: 'HIRA.APPROVE',
-        entityType: 'HiraStudy',
+        action: "HIRA.APPROVE",
+        entityType: "HiraStudy",
         entityId: study.id,
         beforeState: { status: study.status },
         afterState: { status: updatedStudy.status },
@@ -596,9 +678,9 @@ export class HiraService {
 
       await this.outboxService.emit({
         organizationId: user.organizationId,
-        aggregateType: 'HIRA',
+        aggregateType: "HIRA",
         aggregateId: study.id,
-        eventType: 'HIRA_STUDY_APPROVED',
+        eventType: "HIRA_STUDY_APPROVED",
         payload: {
           studyId: study.id,
           referenceNumber: study.referenceNumber,
@@ -615,11 +697,17 @@ export class HiraService {
   /**
    * Action: Reject Study (Approval Pending -> In Progress)
    */
-  async rejectStudy(id: string, user: AuthenticatedUserContext, dto: HiraActionDto) {
+  async rejectStudy(
+    id: string,
+    user: AuthenticatedUserContext,
+    dto: HiraActionDto,
+  ) {
     const study = await this.findById(id, user);
 
     if (study.status !== HiraStatus.APPROVAL_PENDING) {
-      throw new BadRequestException(`Study in state '${study.status}' is not pending approval`);
+      throw new BadRequestException(
+        `Study in state '${study.status}' is not pending approval`,
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -641,9 +729,9 @@ export class HiraService {
 
       await this.workflowService.executeTransition(
         {
-          entityType: 'HiraStudy',
+          entityType: "HiraStudy",
           entityId: study.id,
-          action: 'REJECT',
+          action: "REJECT",
           actor: user,
           comments: dto.comments,
           tx,
@@ -655,8 +743,8 @@ export class HiraService {
         organizationId: user.organizationId,
         plantId: study.plantId,
         actorId: user.id,
-        action: 'HIRA.REJECT',
-        entityType: 'HiraStudy',
+        action: "HIRA.REJECT",
+        entityType: "HiraStudy",
         entityId: study.id,
         beforeState: { status: study.status },
         afterState: { status: updatedStudy.status },
@@ -675,7 +763,9 @@ export class HiraService {
     const study = await this.findById(id, user);
 
     if (study.status !== HiraStatus.APPROVED) {
-      throw new BadRequestException(`Study in state '${study.status}' must be APPROVED before activation`);
+      throw new BadRequestException(
+        `Study in state '${study.status}' must be APPROVED before activation`,
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -694,11 +784,11 @@ export class HiraService {
 
       await this.workflowService.executeTransition(
         {
-          entityType: 'HiraStudy',
+          entityType: "HiraStudy",
           entityId: study.id,
-          action: 'ACTIVATE',
+          action: "ACTIVATE",
           actor: user,
-          comments: 'HIRA activated for site operations',
+          comments: "HIRA activated for site operations",
           tx,
         },
         this.HIRA_TRANSITIONS,
@@ -708,20 +798,20 @@ export class HiraService {
         organizationId: user.organizationId,
         plantId: study.plantId,
         actorId: user.id,
-        action: 'HIRA.ACTIVATE',
-        entityType: 'HiraStudy',
+        action: "HIRA.ACTIVATE",
+        entityType: "HiraStudy",
         entityId: study.id,
         beforeState: { status: study.status },
         afterState: { status: updatedStudy.status },
-        reason: 'Study activated for plant operations',
+        reason: "Study activated for plant operations",
         tx,
       });
 
       await this.outboxService.emit({
         organizationId: user.organizationId,
-        aggregateType: 'HIRA',
+        aggregateType: "HIRA",
         aggregateId: study.id,
-        eventType: 'HIRA_STUDY_ACTIVATED',
+        eventType: "HIRA_STUDY_ACTIVATED",
         payload: {
           studyId: study.id,
           referenceNumber: study.referenceNumber,
@@ -739,7 +829,10 @@ export class HiraService {
    */
   private assertPlantAccess(plantId: string, user: AuthenticatedUserContext) {
     const isGlobal = user.roleScopes.some(
-      (s) => s.scope === AccessScope.SYSTEM || s.scope === AccessScope.ORGANIZATION || s.scope === AccessScope.ALL_PLANTS,
+      (s) =>
+        s.scope === AccessScope.SYSTEM ||
+        s.scope === AccessScope.ORGANIZATION ||
+        s.scope === AccessScope.ALL_PLANTS,
     );
 
     if (isGlobal) return;
@@ -749,7 +842,9 @@ export class HiraService {
     );
 
     if (!allowed) {
-      throw new ForbiddenException(`Access denied for Plant [${plantId}] outside user scope`);
+      throw new ForbiddenException(
+        `Access denied for Plant [${plantId}] outside user scope`,
+      );
     }
   }
 }

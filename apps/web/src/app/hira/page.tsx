@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { AppShell } from '../../components/layout/AppShell';
-import { apiClient } from '../../lib/api';
+import React, { useEffect, useState } from "react";
+import { AppShell } from "../../components/layout/AppShell";
+import { apiClient } from "../../lib/api";
 
 interface HiraStudyItem {
   id: string;
@@ -28,12 +28,12 @@ export default function HiraPage() {
     async function loadStudies() {
       setLoading(true);
       try {
-        const res = await apiClient<HiraStudyItem[]>('/hira');
+        const res = await apiClient<HiraStudyItem[]>("/hira");
         if (res.success && Array.isArray(res.data)) {
           setStudies(res.data);
         }
       } catch (err) {
-        console.error('Failed to load HIRA studies:', err);
+        console.error("Failed to load HIRA studies:", err);
       } finally {
         setLoading(false);
       }
@@ -43,22 +43,22 @@ export default function HiraPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'DRAFT':
-        return 'bg-slate-100 text-slate-700 border-slate-300';
-      case 'IN_PROGRESS':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'TEAM_REVIEW':
-        return 'bg-amber-50 text-amber-800 border-amber-300';
-      case 'APPROVAL_PENDING':
-        return 'bg-purple-50 text-purple-800 border-purple-300';
-      case 'APPROVED':
-        return 'bg-emerald-50 text-emerald-800 border-emerald-300';
-      case 'ACTIVE':
-        return 'bg-teal-50 text-teal-800 border-teal-300';
-      case 'SUPERSEDED':
-        return 'bg-zinc-100 text-zinc-600 border-zinc-200';
+      case "DRAFT":
+        return "bg-slate-100 text-slate-700 border-slate-300";
+      case "IN_PROGRESS":
+        return "bg-blue-50 text-blue-700 border-blue-200";
+      case "TEAM_REVIEW":
+        return "bg-amber-50 text-amber-800 border-amber-300";
+      case "APPROVAL_PENDING":
+        return "bg-purple-50 text-purple-800 border-purple-300";
+      case "APPROVED":
+        return "bg-emerald-50 text-emerald-800 border-emerald-300";
+      case "ACTIVE":
+        return "bg-teal-50 text-teal-800 border-teal-300";
+      case "SUPERSEDED":
+        return "bg-zinc-100 text-zinc-600 border-zinc-200";
       default:
-        return 'bg-slate-50 text-slate-600 border-slate-200';
+        return "bg-slate-50 text-slate-600 border-slate-200";
     }
   };
 
@@ -70,12 +70,15 @@ export default function HiraPage() {
             Hazard Identification &amp; Risk Assessment (HIRA)
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Authoritative register of plant risk assessments, control hierarchies, and compliance approvals.
+            Authoritative register of plant risk assessments, control
+            hierarchies, and compliance approvals.
           </p>
         </div>
 
         <button
-          onClick={() => alert('To create a new study, use the API or modal form.')}
+          onClick={() =>
+            alert("To create a new study, use the API or modal form.")
+          }
           className="inline-flex items-center px-4 py-2 rounded-lg bg-sky-600 text-white font-medium text-xs hover:bg-sky-500 shadow-sm transition"
         >
           + New Risk Assessment
@@ -106,13 +109,19 @@ export default function HiraPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-400">
+                  <td
+                    colSpan={8}
+                    className="px-6 py-12 text-center text-slate-400"
+                  >
                     Querying authoritative HIRA register from PostgreSQL...
                   </td>
                 </tr>
               ) : studies.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-400">
+                  <td
+                    colSpan={8}
+                    className="px-6 py-12 text-center text-slate-400"
+                  >
                     No HIRA studies registered for the active site scope yet.
                   </td>
                 </tr>
@@ -128,17 +137,15 @@ export default function HiraPage() {
                     <td className="px-6 py-4">
                       {s.plant?.name || s.plant?.code}
                     </td>
+                    <td className="px-6 py-4">{s.department?.name || "N/A"}</td>
                     <td className="px-6 py-4">
-                      {s.department?.name || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${getStatusBadge(s.status)}`}>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${getStatusBadge(s.status)}`}
+                      >
                         {s.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-mono">
-                      v{s.revision}
-                    </td>
+                    <td className="px-6 py-4 font-mono">v{s.revision}</td>
                     <td className="px-6 py-4 text-slate-500">
                       {new Date(s.createdAt).toLocaleDateString()}
                     </td>

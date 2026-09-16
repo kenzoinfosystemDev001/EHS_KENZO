@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from "next/link";
 
 export default function HomePage() {
   return (
@@ -12,7 +12,8 @@ export default function HomePage() {
         </h1>
         <p className="text-slate-600 text-base mb-6">
           Enterprise Environment, Health & Safety Management Platform.
-          Production-grade modular monolith architecture with PostgreSQL, NestJS, and Next.js.
+          Production-grade modular monolith architecture with PostgreSQL,
+          NestJS, and Next.js.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left my-6 p-4 bg-slate-50 rounded-lg border border-slate-200 text-sm">
@@ -25,7 +26,9 @@ export default function HomePage() {
             </ul>
           </div>
           <div>
-            <div className="font-semibold text-slate-800">Governance &amp; Security</div>
+            <div className="font-semibold text-slate-800">
+              Governance &amp; Security
+            </div>
             <ul className="list-disc list-inside text-slate-600 mt-1 space-y-1">
               <li>19-Role Permission RBAC</li>
               <li>Multi-Plant Scope Isolation</li>

@@ -1,6 +1,6 @@
-import { IsString, IsNotEmpty, IsEnum, IsOptional } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { RcaMethodology } from '@prisma/client';
+import { IsString, IsNotEmpty, IsEnum, IsOptional } from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { RcaMethodology } from "@prisma/client";
 
 export class CreateRcaDto {
   @ApiProperty()

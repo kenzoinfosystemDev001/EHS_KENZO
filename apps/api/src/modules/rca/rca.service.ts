@@ -1,12 +1,20 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../../database/prisma.service';
-import { AuditService } from '../audit/audit.service';
-import { OutboxService } from '../outbox/outbox.service';
-import { WorkflowService } from '../workflow/workflow.service';
-import { CreateRcaDto, RcaActionDto, AddRcaFindingDto } from './dto/create-rca.dto';
-import { AuthenticatedUserContext } from '../auth/interfaces/auth.interface';
-import { RcaStatus } from '@prisma/client';
-import { AccessScope } from '@kenzo-ehs/types';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { PrismaService } from "../../database/prisma.service";
+import { AuditService } from "../audit/audit.service";
+import { OutboxService } from "../outbox/outbox.service";
+import { WorkflowService } from "../workflow/workflow.service";
+import {
+  CreateRcaDto,
+  RcaActionDto,
+  AddRcaFindingDto,
+} from "./dto/create-rca.dto";
+import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
+import { RcaStatus } from "@prisma/client";
+import { AccessScope } from "@kenzo-ehs/types";
 
 const TX_CONFIG = { maxWait: 20000, timeout: 60000 };
 
@@ -33,14 +41,17 @@ export class RcaService {
     const incident = await this.prisma.incident.findFirst({
       where: { id: dto.incidentId, organizationId: user.organizationId },
     });
-    if (!incident) throw new NotFoundException('Incident not found');
+    if (!incident) throw new NotFoundException("Incident not found");
 
     return this.prisma.$transaction(async (tx) => {
       const count = await tx.rcaStudy.count({
-        where: { organizationId: user.organizationId, plantId: incident.plantId },
+        where: {
+          organizationId: user.organizationId,
+          plantId: incident.plantId,
+        },
       });
       const year = new Date().getFullYear();
-      const seq = String(count + 1).padStart(4, '0');
+      const seq = String(count + 1).padStart(4, "0");
       const referenceNumber = `RCA-${year}-${seq}`;
 
       const rca = await tx.rcaStudy.create({
@@ -58,26 +69,38 @@ export class RcaService {
       });
 
       await this.workflowService.getOrCreateInstance(
-        user.organizationId, 'RcaStudy', rca.id, RcaStatus.DRAFT, 'RCA_STANDARD_V1', tx,
+        user.organizationId,
+        "RcaStudy",
+        rca.id,
+        RcaStatus.DRAFT,
+        "RCA_STANDARD_V1",
+        tx,
       );
 
       await this.auditService.log({
         organizationId: user.organizationId,
         plantId: incident.plantId,
         actorId: user.id,
-        action: 'RCA.CREATE',
-        entityType: 'RcaStudy',
+        action: "RCA.CREATE",
+        entityType: "RcaStudy",
         entityId: rca.id,
-        afterState: { status: rca.status, referenceNumber: rca.referenceNumber },
+        afterState: {
+          status: rca.status,
+          referenceNumber: rca.referenceNumber,
+        },
         tx,
       });
 
       await this.outboxService.emit({
         organizationId: user.organizationId,
-        aggregateType: 'RCA',
+        aggregateType: "RCA",
         aggregateId: rca.id,
-        eventType: 'RCA_CREATED',
-        payload: { rcaId: rca.id, incidentId: dto.incidentId, referenceNumber: rca.referenceNumber },
+        eventType: "RCA_CREATED",
+        payload: {
+          rcaId: rca.id,
+          incidentId: dto.incidentId,
+          referenceNumber: rca.referenceNumber,
+        },
         tx,
       });
 
@@ -87,16 +110,25 @@ export class RcaService {
 
   async findAll(user: AuthenticatedUserContext) {
     const isGlobal = user.roleScopes.some(
-      (s) => s.scope === AccessScope.SYSTEM || s.scope === AccessScope.ORGANIZATION || s.scope === AccessScope.ALL_PLANTS,
+      (s) =>
+        s.scope === AccessScope.SYSTEM ||
+        s.scope === AccessScope.ORGANIZATION ||
+        s.scope === AccessScope.ALL_PLANTS,
     );
     const where: any = { organizationId: user.organizationId, deletedAt: null };
     if (!isGlobal) {
-      where.plantId = { in: user.roleScopes.filter((s) => s.scope === AccessScope.OWN_PLANT && s.plantId).map((s) => s.plantId!) };
+      where.plantId = {
+        in: user.roleScopes
+          .filter((s) => s.scope === AccessScope.OWN_PLANT && s.plantId)
+          .map((s) => s.plantId!),
+      };
     }
     return this.prisma.rcaStudy.findMany({
       where,
-      include: { incident: { select: { id: true, referenceNumber: true, title: true } } },
-      orderBy: { createdAt: 'desc' },
+      include: {
+        incident: { select: { id: true, referenceNumber: true, title: true } },
+      },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -106,14 +138,21 @@ export class RcaService {
       include: {
         incident: { select: { id: true, referenceNumber: true, title: true } },
         findings: true,
-        leadInvestigator: { select: { id: true, email: true, firstName: true, lastName: true } },
+        leadInvestigator: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
       },
     });
-    if (!rca || rca.organizationId !== user.organizationId) throw new NotFoundException(`RCA [${id}] not found`);
+    if (!rca || rca.organizationId !== user.organizationId)
+      throw new NotFoundException(`RCA [${id}] not found`);
     return rca;
   }
 
-  async addFinding(rcaId: string, dto: AddRcaFindingDto, user: AuthenticatedUserContext) {
+  async addFinding(
+    rcaId: string,
+    dto: AddRcaFindingDto,
+    user: AuthenticatedUserContext,
+  ) {
     const rca = await this.findById(rcaId, user);
     return this.prisma.rcaFinding.create({
       data: {
@@ -127,20 +166,41 @@ export class RcaService {
     });
   }
 
-  async executeAction(id: string, action: string, user: AuthenticatedUserContext, dto: RcaActionDto) {
+  async executeAction(
+    id: string,
+    action: string,
+    user: AuthenticatedUserContext,
+    dto: RcaActionDto,
+  ) {
     const rca = await this.findById(id, user);
     const nextState = this.TRANSITIONS[rca.status]?.[action];
-    if (!nextState) throw new BadRequestException(`Action '${action}' invalid from state '${rca.status}'`);
+    if (!nextState)
+      throw new BadRequestException(
+        `Action '${action}' invalid from state '${rca.status}'`,
+      );
 
     return this.prisma.$transaction(async (tx) => {
       const updates: any = { status: nextState as RcaStatus };
-      if (action === 'APPROVE') { updates.approvedById = user.id; updates.approvedAt = new Date(); }
-      if (action === 'CLOSE') updates.closedAt = new Date();
+      if (action === "APPROVE") {
+        updates.approvedById = user.id;
+        updates.approvedAt = new Date();
+      }
+      if (action === "CLOSE") updates.closedAt = new Date();
 
-      const updated = await tx.rcaStudy.update({ where: { id: rca.id }, data: updates });
+      const updated = await tx.rcaStudy.update({
+        where: { id: rca.id },
+        data: updates,
+      });
 
       await this.workflowService.executeTransition(
-        { entityType: 'RcaStudy', entityId: rca.id, action, actor: user, comments: dto.comments, tx },
+        {
+          entityType: "RcaStudy",
+          entityId: rca.id,
+          action,
+          actor: user,
+          comments: dto.comments,
+          tx,
+        },
         this.TRANSITIONS,
       );
 
@@ -149,7 +209,7 @@ export class RcaService {
         plantId: rca.plantId,
         actorId: user.id,
         action: `RCA.${action}`,
-        entityType: 'RcaStudy',
+        entityType: "RcaStudy",
         entityId: rca.id,
         beforeState: { status: rca.status },
         afterState: { status: nextState },
@@ -159,10 +219,15 @@ export class RcaService {
 
       await this.outboxService.emit({
         organizationId: user.organizationId,
-        aggregateType: 'RCA',
+        aggregateType: "RCA",
         aggregateId: rca.id,
         eventType: `RCA_${action}`,
-        payload: { rcaId: rca.id, fromStatus: rca.status, toStatus: nextState, actorId: user.id },
+        payload: {
+          rcaId: rca.id,
+          fromStatus: rca.status,
+          toStatus: nextState,
+          actorId: user.id,
+        },
         tx,
       });
 
