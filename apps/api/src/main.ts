@@ -65,7 +65,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup("docs", app, document);
 
-  const port = process.env.API_PORT || 4000;
+  const port = process.env.PORT || process.env.API_PORT || 4000;
   await app.listen(port);
   logger.log(`Kenzo EHS API is operational at http://localhost:${port}/api/v1`);
   logger.log(
