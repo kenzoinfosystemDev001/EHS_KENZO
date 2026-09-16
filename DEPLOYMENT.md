@@ -80,19 +80,25 @@ This strategy deploys the database on **Neon**, the NestJS backend on **Render /
 
 ### 3. Frontend Deployment (Vercel)
 
-1. Import your GitHub repository `kenzoinfosystemDev001/EHS_KENZO` in [Vercel](https://vercel.com).
-2. Configure Project Settings:
-   - **Framework Preset**: `Next.js`
-   - **Root Directory**: `apps/web` (or root with build command targeting `@kenzo-ehs/web`)
-   - **Build Command**:
-     ```bash
-     cd ../.. && pnpm install && pnpm run build
-     ```
-   - **Output Directory**: `.next`
-3. Add Environment Variables:
-   | Variable | Value | Description |
-   |---|---|---|
-   | `NEXT_PUBLIC_API_URL` | `https://your-api-domain.onrender.com/api/v1` | URL pointing to deployed API |
+The repository includes pre-configured `vercel.json` files for automatic deployment.
+
+#### Option A: Zero-Config (Root Directory = `.`)
+If you imported the repository with the default Root Directory (`.`):
+1. **Framework Preset**: `Next.js` (defined in `vercel.json`)
+2. **Build Command**: `pnpm -r --filter=!@kenzo-ehs/mobile run build` (auto-detected from `vercel.json`)
+3. **Output Directory**: `apps/web/.next` (auto-detected from `vercel.json`)
+
+#### Option B: Set Root Directory to `apps/web` (Standard Vercel Monorepo Setup)
+In your Vercel Project Dashboard:
+1. Go to **Settings** > **General** > **Root Directory**: Click **Edit** and set to `apps/web`.
+2. Ensure **Framework Preset** is set to `Next.js`.
+3. Vercel will automatically resolve monorepo packages and deploy `.next`.
+
+#### Environment Variables
+In Vercel **Settings** > **Environment Variables**, add:
+| Variable | Value | Description |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | `https://your-api-domain.onrender.com/api/v1` | URL pointing to deployed API |
 
 ---
 
