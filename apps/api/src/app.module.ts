@@ -4,6 +4,13 @@ import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { HealthModule } from './modules/health/health.module';
+import { WorkflowModule } from './modules/workflow/workflow.module';
+import { OutboxModule } from './modules/outbox/outbox.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { DocumentsModule } from './modules/documents/documents.module';
+import { HiraModule } from './modules/hira/hira.module';
+import { MasterDataModule } from './modules/master-data/master-data.module';
+import { InboxModule } from './modules/inbox/inbox.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
 @Module({
@@ -16,6 +23,13 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
     AuditModule,
     AuthModule,
     HealthModule,
+    WorkflowModule,
+    OutboxModule,
+    NotificationsModule,
+    DocumentsModule,
+    HiraModule,
+    MasterDataModule,
+    InboxModule,
   ],
 })
 export class AppModule implements NestModule {

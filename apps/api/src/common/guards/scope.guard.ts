@@ -36,29 +36,34 @@ export class ScopeGuard implements CanActivate {
       return true;
     }
 
+    const userPlantScopes = user.roleScopes.filter((s) => s.scope === AccessScope.OWN_PLANT && s.plantId);
+    const userDeptScopes = user.roleScopes.filter((s) => s.scope === AccessScope.OWN_DEPARTMENT && s.departmentId);
+
     // Check plant-level scope
     if (targetPlantId) {
-      const allowedPlants = new Set(
-        user.roleScopes
-          .filter((s) => s.scope === AccessScope.OWN_PLANT && s.plantId)
-          .map((s) => s.plantId),
-      );
+      const allowedPlants = new Set([
+        ...userPlantScopes.map((s) => s.plantId),
+        ...userDeptScopes.map((s) => s.plantId).filter((id): id is string => Boolean(id)),
+      ]);
 
       if (!allowedPlants.has(targetPlantId)) {
         throw new ForbiddenException(`Access denied for Plant [${targetPlantId}] outside user scope`);
       }
     }
 
-    // Check department-level scope
+    // Check department-level scope:
+    // If user has OWN_PLANT scope covering this plant, all departments within that plant are accessible.
+    // If user is restricted to OWN_DEPARTMENT, they may only access their specific assigned department.
     if (targetDeptId) {
-      const allowedDepts = new Set(
-        user.roleScopes
-          .filter((s) => s.scope === AccessScope.OWN_DEPARTMENT && s.departmentId)
-          .map((s) => s.departmentId),
-      );
+      const hasPlantCoverage = targetPlantId
+        ? userPlantScopes.some((s) => s.plantId === targetPlantId)
+        : userPlantScopes.length > 0;
 
-      if (!allowedDepts.has(targetDeptId)) {
-        throw new ForbiddenException(`Access denied for Department [${targetDeptId}] outside user scope`);
+      if (!hasPlantCoverage) {
+        const allowedDepts = new Set(userDeptScopes.map((s) => s.departmentId));
+        if (!allowedDepts.has(targetDeptId)) {
+          throw new ForbiddenException(`Access denied for Department [${targetDeptId}] outside user scope`);
+        }
       }
     }
 

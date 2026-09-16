@@ -39,14 +39,23 @@ export class AllExceptionsFilter implements ExceptionFilter {
       );
     }
 
+    const errorDetails = Array.isArray(message) ? message : (typeof message === 'object' && message !== null ? message : []);
+    const errorMessage = typeof message === 'string' ? message : 'An error occurred during request processing';
+
     response.status(status).json({
       success: false,
       statusCode: status,
-      error: errorType,
-      message,
-      timestamp: new Date().toISOString(),
-      path: request.url,
-      requestId,
+      message: errorMessage,
+      error: {
+        code: errorType,
+        message: errorMessage,
+        details: errorDetails,
+      },
+      meta: {
+        requestId,
+        timestamp: new Date().toISOString(),
+        path: request.url,
+      },
     });
   }
 }

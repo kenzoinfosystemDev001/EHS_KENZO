@@ -17,7 +17,7 @@ apps/api/dist/
 
 # Package build output
 packages/*/dist/
-packages/*/tsconfig.tsbuildinfo
+*.tsbuildinfo
 
 # Environment variables
 .env

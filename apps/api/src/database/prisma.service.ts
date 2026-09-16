@@ -7,6 +7,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   constructor() {
     super({
+      transactionOptions: {
+        maxWait: 20000,
+        timeout: 60000,
+      },
       log:
         process.env.NODE_ENV === 'development'
           ? [

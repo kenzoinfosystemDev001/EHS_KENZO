@@ -8,43 +8,60 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Request } from 'express';
 
-export interface ResponseEnvelope<T> {
+export interface ResponseMeta {
+  requestId: string;
+  page?: number;
+  pageSize?: number;
+  total?: number;
+  totalPages?: number;
+  [key: string]: unknown;
+}
+
+export interface ApiResponseEnvelope<T> {
   success: boolean;
   data: T;
-  meta?: Record<string, unknown>;
-  requestId?: string;
-  timestamp: string;
+  meta: ResponseMeta;
 }
 
 @Injectable()
 export class TransformInterceptor<T>
-  implements NestInterceptor<T, ResponseEnvelope<T>>
+  implements NestInterceptor<T, ApiResponseEnvelope<T>>
 {
   intercept(
     context: ExecutionContext,
     next: CallHandler,
-  ): Observable<ResponseEnvelope<T>> {
+  ): Observable<ApiResponseEnvelope<T>> {
     const req = context.switchToHttp().getRequest<Request>();
-    const requestId = (req.headers['x-request-id'] as string) || undefined;
+    const requestId = (req.headers['x-request-id'] as string) || 'unknown';
 
     return next.handle().pipe(
       map((data) => {
-        // If the controller already returned an envelope with meta, preserve it
-        if (data && typeof data === 'object' && 'data' in data && 'meta' in data) {
+        // If data contains pagination/meta wrapper from services
+        if (data && typeof data === 'object' && 'items' in data && 'total' in data) {
+          const page = Number(req.query.page) || 1;
+          const pageSize = Number(req.query.limit) || 20;
+          const total = Number(data.total) || 0;
+          const totalPages = Math.ceil(total / pageSize);
+
           return {
             success: true,
-            data: data.data,
-            meta: data.meta,
-            requestId,
-            timestamp: new Date().toISOString(),
+            data: data.items,
+            meta: {
+              page,
+              pageSize,
+              total,
+              totalPages,
+              requestId,
+            },
           };
         }
 
         return {
           success: true,
-          data,
-          requestId,
-          timestamp: new Date().toISOString(),
+          data: data !== undefined ? data : null,
+          meta: {
+            requestId,
+          },
         };
       }),
     );

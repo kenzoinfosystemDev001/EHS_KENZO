@@ -67,6 +67,56 @@ enum WorkflowTaskStatus {
   ESCALATED
 }
 
+enum HiraStatus {
+  DRAFT
+  IN_PROGRESS
+  TEAM_REVIEW
+  APPROVAL_PENDING
+  APPROVED
+  ACTIVE
+  ARCHIVED
+}
+
+enum HiraReviewDecision {
+  RECOMMENDED
+  REWORK_REQUIRED
+  REJECTED
+}
+
+enum HiraApprovalDecision {
+  APPROVED
+  REJECTED
+  OVERRIDDEN
+}
+
+enum RiskLevel {
+  LOW
+  MODERATE
+  HIGH
+  CRITICAL
+}
+
+enum ControlHierarchyType {
+  ELIMINATION
+  SUBSTITUTION
+  ENGINEERING
+  ADMINISTRATIVE
+  PPE
+}
+
+enum HazardCategory {
+  CHEMICAL
+  MECHANICAL
+  ELECTRICAL
+  THERMAL
+  ERGONOMIC
+  BIOLOGICAL
+  RADIATION
+  ENVIRONMENTAL
+  PSYCHOSOCIAL
+  PHYSICAL
+}
+
 // ==============================================================================
 // 1. MULTI-TENANCY & GEOGRAPHIC HIERARCHY
 // ==============================================================================
@@ -94,6 +144,7 @@ model Organization {
   workflowInstances       WorkflowInstance[]
   outboxEvents            OutboxEvent[]
   userRoles               UserRole[]
+  hiraStudies             HiraStudy[]
 
   @@index([code])
   @@index([isActive])
@@ -122,6 +173,7 @@ model Plant {
   auditLogs      AuditLog[]
   documents      Document[]
   userRoles      UserRole[]
+  hiraStudies    HiraStudy[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -145,6 +197,7 @@ model Department {
   areas          Area[]
   employees      Employee[]
   userRoles      UserRole[]
+  hiraStudies    HiraStudy[]
 
   @@unique([plantId, code])
   @@index([organizationId])
@@ -167,6 +220,7 @@ model Area {
 
   // Relations
   department     Department   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  hiraStudies    HiraStudy[]
 
   @@unique([departmentId, code])
   @@index([plantId])
@@ -203,6 +257,11 @@ model User {
   assignedTasks           WorkflowTask[]
   notifications           Notification[]
   notificationPreferences NotificationPreference[]
+  ledHiraStudies          HiraStudy[]               @relation("HiraLeader")
+  createdHiraStudies      HiraStudy[]               @relation("HiraCreator")
+  hiraTeamMembers         HiraTeamMember[]
+  hiraReviews             HiraReview[]
+  hiraApprovals           HiraApproval[]
 
   @@index([organizationId])
   @@index([email])
@@ -362,7 +421,7 @@ model AuditLog {
   metadata        Json?
   timestamp       DateTime     @default(now())
 
-  // Relations - Restrict deletion of parents to maintain immutable compliance audit logs
+  // Relations
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   plant           Plant?       @relation(fields: [plantId], references: [id], onDelete: Restrict)
   actor           User         @relation(fields: [actorId], references: [id], onDelete: Restrict)
@@ -612,4 +671,194 @@ model OutboxEvent {
   @@index([processedAt, createdAt])
   @@index([organizationId])
   @@index([aggregateType, aggregateId])
+}
+
+// ==============================================================================
+// 8. HIRA DOMAIN (HAZARD IDENTIFICATION & RISK ASSESSMENT)
+// ==============================================================================
+
+model HiraStudy {
+  id                         String              @id @default(uuid())
+  organizationId             String
+  plantId                    String
+  departmentId               String
+  areaId                     String?
+  referenceNumber            String              // e.g. HIRA-2026-NW-0001
+  title                      String
+  description                String?
+  version                    Int                 @default(1)
+  status                     HiraStatus          @default(DRAFT)
+  leaderId                   String
+  createdById                String
+  validUntil                 DateTime?
+  submittedAt                DateTime?
+  reviewedAt                 DateTime?
+  approvedAt                 DateTime?
+  activatedAt                DateTime?
+  unacceptableRiskOverridden Boolean             @default(false)
+  overrideJustification      String?
+  overrideApprovedById       String?
+  workflowInstanceId         String?
+  createdAt                  DateTime            @default(now())
+  updatedAt                  DateTime            @updatedAt
+  deletedAt                  DateTime?
+
+  // Relations
+  organization               Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plant                      Plant               @relation(fields: [plantId], references: [id], onDelete: Restrict)
+  department                 Department          @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  area                       Area?               @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  leader                     User                @relation("HiraLeader", fields: [leaderId], references: [id], onDelete: Restrict)
+  createdBy                  User                @relation("HiraCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  teamMembers                HiraTeamMember[]
+  activities                 HiraActivity[]
+  reviews                    HiraReview[]
+  approvals                  HiraApproval[]
+  versions                   HiraVersion[]
+
+  @@unique([organizationId, referenceNumber])
+  @@index([organizationId])
+  @@index([plantId])
+  @@index([departmentId])
+  @@index([status])
+  @@index([leaderId])
+}
+
+model HiraTeamMember {
+  id             String     @id @default(uuid())
+  hiraStudyId    String
+  userId         String
+  roleTitle      String     // e.g. FACILITATOR, PROCESS_ENGINEER, OPERATOR_REP
+  departmentName String?
+  createdAt      DateTime   @default(now())
+
+  // Relations
+  hiraStudy      HiraStudy  @relation(fields: [hiraStudyId], references: [id], onDelete: Cascade)
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([hiraStudyId, userId])
+  @@index([hiraStudyId])
+  @@index([userId])
+}
+
+model HiraActivity {
+  id             String       @id @default(uuid())
+  hiraStudyId    String
+  activityName   String
+  description    String?
+  isRoutine      Boolean      @default(true)
+  sequenceOrder  Int          @default(1)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  hiraStudy      HiraStudy    @relation(fields: [hiraStudyId], references: [id], onDelete: Cascade)
+  hazards        HiraHazard[]
+
+  @@index([hiraStudyId, sequenceOrder])
+}
+
+model HiraHazard {
+  id                  String             @id @default(uuid())
+  activityId          String
+  hazardCategory      HazardCategory     @default(PHYSICAL)
+  hazardDescription   String
+  consequence         String
+  
+  // Initial Risk (Severity x Likelihood)
+  initialSeverity     Int                // 1 to 5
+  initialLikelihood   Int                // 1 to 5
+  initialRiskScore    Int                // 1 to 25
+  initialRiskLevel    RiskLevel
+  
+  // Residual Risk (after controls)
+  residualSeverity    Int                // 1 to 5
+  residualLikelihood  Int                // 1 to 5
+  residualRiskScore   Int                // 1 to 25 (minimum 1 floor)
+  residualRiskLevel   RiskLevel
+  
+  alarpJustified      Boolean            @default(true)
+  alarpJustification  String?
+  isUnacceptable      Boolean            @default(false)
+  requiresOverride    Boolean            @default(false)
+  regulatoryReference String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  // Relations
+  activity            HiraActivity       @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  controls            HiraControl[]
+
+  @@index([activityId])
+  @@index([initialRiskLevel])
+  @@index([residualRiskLevel])
+}
+
+model HiraControl {
+  id                   String               @id @default(uuid())
+  hazardId             String
+  controlType          ControlHierarchyType
+  description          String
+  effectivenessPercent Int                  @default(0) // 0 to 100%
+  isExisting           Boolean              @default(true)
+  responsibleUserId    String?
+  targetDate           DateTime?
+  completedAt          DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  // Relations
+  hazard               HiraHazard           @relation(fields: [hazardId], references: [id], onDelete: Cascade)
+
+  @@index([hazardId])
+  @@index([controlType])
+}
+
+model HiraReview {
+  id             String              @id @default(uuid())
+  hiraStudyId    String
+  reviewerId     String
+  decision       HiraReviewDecision
+  comments       String
+  reviewedAt     DateTime            @default(now())
+
+  // Relations
+  hiraStudy      HiraStudy           @relation(fields: [hiraStudyId], references: [id], onDelete: Cascade)
+  reviewer       User                @relation(fields: [reviewerId], references: [id], onDelete: Restrict)
+
+  @@index([hiraStudyId])
+  @@index([reviewerId])
+}
+
+model HiraApproval {
+  id             String                @id @default(uuid())
+  hiraStudyId    String
+  approverId     String
+  decision       HiraApprovalDecision
+  comments       String
+  isOverride     Boolean               @default(false)
+  approvedAt     DateTime              @default(now())
+
+  // Relations
+  hiraStudy      HiraStudy             @relation(fields: [hiraStudyId], references: [id], onDelete: Cascade)
+  approver       User                  @relation(fields: [approverId], references: [id], onDelete: Restrict)
+
+  @@index([hiraStudyId])
+  @@index([approverId])
+}
+
+model HiraVersion {
+  id             String     @id @default(uuid())
+  hiraStudyId    String
+  versionNumber  Int
+  snapshot       Json
+  changeReason   String?
+  createdById    String
+  createdAt      DateTime   @default(now())
+
+  // Relations
+  hiraStudy      HiraStudy  @relation(fields: [hiraStudyId], references: [id], onDelete: Cascade)
+
+  @@unique([hiraStudyId, versionNumber])
+  @@index([hiraStudyId])
 }
