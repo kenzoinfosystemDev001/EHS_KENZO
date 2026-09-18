@@ -6,24 +6,31 @@ import { apiClient } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 
 interface DashboardStats {
-  hira: {
-    total: number;
-    byStatus: Record<string, number>;
+  hira?: {
+    total?: number;
+    byStatus?: Record<string, number>;
   };
-  incidents: {
-    total: number;
-    byStatus: Record<string, number>;
+  incidents?: {
+    total?: number;
+    byStatus?: Record<string, number>;
   };
-  capa: { openCount: number };
-  ptw: { activeCount: number };
-  workflow: { pendingTasks: number };
-  notifications: { unreadCount: number };
-  recentActivity: Array<{
+  capa?: { openCount?: number };
+  ptw?: { activeCount?: number };
+  workflow?: { pendingTasks?: number };
+  notifications?: { unreadCount?: number };
+  openIncidents?: number;
+  nearMisses?: number;
+  observations?: number;
+  openCapa?: number;
+  overdueCapa?: number;
+  pendingHira?: number;
+  pendingApprovals?: number;
+  recentActivity?: Array<{
     id: string;
     action: string;
     entityType: string;
     entityId: string;
-    actor: { firstName: string; lastName: string; email: string };
+    actor?: { firstName?: string; lastName?: string; email?: string };
     timestamp: string;
   }>;
 }
@@ -64,6 +71,8 @@ export default function DashboardPage() {
     });
   }, []);
 
+  const recentList = stats?.recentActivity ?? [];
+
   return (
     <AppShell>
       <div className="mb-6">
@@ -93,37 +102,37 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
             <KpiCard
               label="HIRA Studies"
-              value={stats.hira.total}
+              value={stats.hira?.total ?? stats.pendingHira ?? 0}
               sub="All statuses"
               color="text-sky-600"
             />
             <KpiCard
               label="Active HIRA"
-              value={stats.hira.byStatus["ACTIVE"] ?? 0}
+              value={stats.hira?.byStatus?.["ACTIVE"] ?? stats.pendingHira ?? 0}
               sub="Operational"
               color="text-teal-600"
             />
             <KpiCard
               label="Incidents"
-              value={stats.incidents.total}
+              value={stats.incidents?.total ?? stats.openIncidents ?? 0}
               sub="All statuses"
               color="text-orange-600"
             />
             <KpiCard
               label="Open CAPAs"
-              value={stats.capa.openCount}
+              value={stats.capa?.openCount ?? stats.openCapa ?? 0}
               sub="Awaiting action"
               color="text-amber-600"
             />
             <KpiCard
               label="Active Permits"
-              value={stats.ptw.activeCount}
+              value={stats.ptw?.activeCount ?? 0}
               sub="PTW live"
               color="text-purple-600"
             />
             <KpiCard
               label="My Tasks"
-              value={stats.workflow.pendingTasks}
+              value={stats.workflow?.pendingTasks ?? stats.pendingApprovals ?? 0}
               sub="Pending"
               color="text-red-600"
             />
@@ -136,12 +145,12 @@ export default function DashboardPage() {
               </h2>
             </div>
             <div className="divide-y divide-slate-100">
-              {stats.recentActivity.length === 0 ? (
+              {recentList.length === 0 ? (
                 <div className="px-5 py-8 text-center text-slate-400 text-sm">
                   No recent activity
                 </div>
               ) : (
-                stats.recentActivity.map((log) => (
+                recentList.map((log) => (
                   <div
                     key={log.id}
                     className="px-5 py-3 flex items-center justify-between text-xs"
@@ -155,8 +164,10 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     <div className="text-slate-400">
-                      {log.actor.firstName} {log.actor.lastName} ·{" "}
-                      {new Date(log.timestamp).toLocaleTimeString()}
+                      {log.actor?.firstName ?? "User"} {log.actor?.lastName ?? ""} ·{" "}
+                      {log.timestamp
+                        ? new Date(log.timestamp).toLocaleTimeString()
+                        : ""}
                     </div>
                   </div>
                 ))

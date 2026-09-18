@@ -155,12 +155,24 @@ export class DashboardService {
       totalManhours,
       ltifr,
       criticalRisks,
+      hira: {
+        total: pendingHira,
+        byStatus: { ACTIVE: pendingHira },
+      },
+      incidents: {
+        total: openIncidents,
+        byStatus: { OPEN: openIncidents, NEAR_MISS: nearMisses },
+      },
+      capa: { openCount: openCapa },
+      ptw: { activeCount: 0 },
+      workflow: { pendingTasks: pendingApprovals },
+      notifications: { unreadCount: 0 },
       recentActivity: recentAuditLogs.map((log) => ({
         id: log.id,
         action: log.action,
         entityType: log.entityType,
         entityId: log.entityId,
-        actor: log.actor,
+        actor: log.actor || { firstName: "System", lastName: "", email: "" },
         timestamp: log.timestamp,
       })),
     };
