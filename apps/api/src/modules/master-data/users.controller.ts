@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Body, UseGuards } from "@nestjs/common";
+import { Controller, Get, Post, Patch, Param, Body, UseGuards } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 import { IsEnum } from "class-validator";
 import { MasterDataService } from "./master-data.service";
@@ -25,6 +25,12 @@ export class UsersController {
   @ApiOperation({ summary: "Get current user profile (Alias for /auth/me)" })
   async getMe(@CurrentUser() user: AuthenticatedUserContext) {
     return this.masterDataService.getUserById(user.id, user);
+  }
+
+  @Post("seed-all")
+  @ApiOperation({ summary: "Seed all 19 enterprise operational roles and demo users" })
+  async seedAll(@CurrentUser() user: AuthenticatedUserContext) {
+    return this.masterDataService.seedAllUsers(user.organizationId);
   }
 
   @Get()

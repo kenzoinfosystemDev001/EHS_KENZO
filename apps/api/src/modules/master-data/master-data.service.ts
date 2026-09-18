@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, OnModuleInit, Logger } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
 import {
   CreateOrganizationDto,
@@ -6,10 +6,23 @@ import {
   CreateDepartmentDto,
 } from "./dto/master-data.dto";
 import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
+import { seedAll19EnterpriseUsers } from "./enterprise-users.seed";
 
 @Injectable()
-export class MasterDataService {
+export class MasterDataService implements OnModuleInit {
+  private readonly logger = new Logger(MasterDataService.name);
+
   constructor(private readonly prisma: PrismaService) {}
+
+  async onModuleInit() {
+    try {
+      this.logger.log("Checking and ensuring all 19 enterprise operational roles & users exist...");
+      await seedAll19EnterpriseUsers(this.prisma);
+      this.logger.log("✅ 19 Enterprise users verified and seeded.");
+    } catch (err) {
+      this.logger.warn(`Enterprise users auto-seed notice: ${err}`);
+    }
+  }
 
   // Organizations
   async getOrganizations() {
@@ -87,7 +100,7 @@ export class MasterDataService {
 
   // Users
   async getUsers(user: AuthenticatedUserContext) {
-    return this.prisma.user.findMany({
+    let users = await this.prisma.user.findMany({
       where: { organizationId: user.organizationId },
       select: {
         id: true,
@@ -105,6 +118,38 @@ export class MasterDataService {
       },
       orderBy: { createdAt: "desc" },
     });
+
+    if (users.length < 19) {
+      try {
+        await seedAll19EnterpriseUsers(this.prisma, user.organizationId);
+        users = await this.prisma.user.findMany({
+          where: { organizationId: user.organizationId },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            status: true,
+            lastLoginAt: true,
+            userRoles: {
+              include: {
+                role: { select: { code: true, name: true } },
+                plant: { select: { code: true, name: true } },
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        });
+      } catch (err) {
+        this.logger.warn(`Auto-seeding 19 users in getUsers warning: ${err}`);
+      }
+    }
+
+    return users;
+  }
+
+  async seedAllUsers(organizationId?: string) {
+    return seedAll19EnterpriseUsers(this.prisma, organizationId);
   }
 
   async getUserById(id: string, user: AuthenticatedUserContext) {

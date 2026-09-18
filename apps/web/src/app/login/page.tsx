@@ -119,16 +119,99 @@ function LoginFormContent() {
           </button>
         </form>
 
-        <div className="mt-6 p-3 rounded-lg bg-slate-50 border border-slate-200">
-          <p className="text-xs font-medium text-slate-600 mb-2">
-            Test Accounts
+        <div className="mt-6 p-4 rounded-xl bg-slate-50 border border-slate-200">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-700">
+              Select From 19 Enterprise Roles (1-Click Fill)
+            </p>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 font-semibold">
+              Pass: KenzoEHS@2026!
+            </span>
+          </div>
+
+          <p className="text-[11px] text-slate-500 mb-2">
+            Click any role to test its specific dashboard view and the 8-stage issue escalation workflow:
           </p>
-          <div className="space-y-1 text-xs text-slate-500">
-            <div>admin@kenzo-ehs.com</div>
-            <div>hse.manager@kenzo-ehs.com</div>
-            <div>safety.officer@kenzo-ehs.com</div>
-            <div>worker@kenzo-ehs.com</div>
-            <div className="mt-1 font-medium">Password: KenzoEHS@2026!</div>
+
+          <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+            <div>
+              <div className="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-1">
+                🔥 8-Stage Issue Escalation Chain
+              </div>
+              <div className="grid grid-cols-1 gap-1.5">
+                {[
+                  { stage: 1, role: "Field Worker", email: "worker@kenzo-ehs.com", desc: "Spots issue, takes photo, submits" },
+                  { stage: 2, role: "Worker Head", email: "worker.head@kenzo-ehs.com", desc: "Verifies on site & forwards" },
+                  { stage: 3, role: "Dept Head", email: "dept.head@kenzo-ehs.com", desc: "Reviews operations & forwards" },
+                  { stage: 4, role: "Contractor Coord", email: "contractor.coordinator@kenzo-ehs.com", desc: "Assesses repairs & forwards" },
+                  { stage: 5, role: "HSE Manager", email: "hse.manager@kenzo-ehs.com", desc: "Verifies safety compliance" },
+                  { stage: 6, role: "Health Inspector", email: "health.inspector@kenzo-ehs.com", desc: "Clears hygiene & health" },
+                  { stage: 7, role: "Sub Admin", email: "subadmin@kenzo-ehs.com", desc: "Pre-approves risk & forwards" },
+                  { stage: 8, role: "Admin", email: "admin@kenzo-ehs.com", desc: "Approves, assigns staff, slot & funds" },
+                ].map((item) => (
+                  <button
+                    key={item.email}
+                    type="button"
+                    onClick={() => {
+                      setEmail(item.email);
+                      setPassword("KenzoEHS@2026!");
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg border text-xs transition flex items-center justify-between ${
+                      email === item.email
+                        ? "bg-sky-50 border-sky-400 text-sky-900 font-medium"
+                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    <div>
+                      <span className="inline-block w-4 h-4 rounded-full bg-slate-200 text-slate-800 text-[9px] font-bold text-center leading-4 mr-1.5">
+                        {item.stage}
+                      </span>
+                      <span className="font-semibold">{item.role}</span>
+                      <span className="text-[10px] text-slate-500 ml-1.5">({item.email})</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400">{item.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                Other Enterprise Roles
+              </div>
+              <div className="grid grid-cols-1 gap-1">
+                {[
+                  { role: "System Admin", email: "sysadmin@kenzo-ehs.com" },
+                  { role: "Plant Head", email: "plant.head@kenzo-ehs.com" },
+                  { role: "Safety Officer", email: "safety.officer@kenzo-ehs.com" },
+                  { role: "Maintenance Head", email: "maintenance.head@kenzo-ehs.com" },
+                  { role: "Permit Issuer", email: "permit.issuer@kenzo-ehs.com" },
+                  { role: "Safety Trainer", email: "trainer@kenzo-ehs.com" },
+                  { role: "L&D Manager", email: "ld.manager@kenzo-ehs.com" },
+                  { role: "Environment Manager", email: "environment.manager@kenzo-ehs.com" },
+                  { role: "Industrial Hygienist", email: "hygienist@kenzo-ehs.com" },
+                  { role: "Emergency Coord", email: "emergency.coord@kenzo-ehs.com" },
+                  { role: "Contractor Workman", email: "contractor.workman@kenzo-ehs.com" },
+                ].map((item) => (
+                  <button
+                    key={item.email}
+                    type="button"
+                    onClick={() => {
+                      setEmail(item.email);
+                      setPassword("KenzoEHS@2026!");
+                    }}
+                    className={`w-full text-left px-2 py-1 rounded border text-xs transition flex items-center justify-between ${
+                      email === item.email
+                        ? "bg-sky-50 border-sky-400 text-sky-900 font-medium"
+                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    <span>{item.role}</span>
+                    <span className="text-[10px] text-slate-400">{item.email}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -27,25 +27,50 @@ const STATUS_COLORS: Record<string, string> = {
 export default function UsersPage() {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
 
-  useEffect(() => {
+  const fetchUsers = () => {
+    setLoading(true);
     apiClient<UserItem[]>("/users").then((res) => {
       if (res.success && Array.isArray(res.data)) setUsers(res.data);
       setLoading(false);
     });
+  };
+
+  useEffect(() => {
+    fetchUsers();
   }, []);
+
+  const handleSeedAll = async () => {
+    try {
+      setSeeding(true);
+      await apiClient("/users/seed-all", { method: "POST" });
+      fetchUsers();
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   return (
     <AppShell>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Users
+            Users & Roles Directory (19 Roles)
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Organization user directory and role assignments.
+            Enterprise user directory, hierarchical scopes, and 8-stage workflow roles.
           </p>
         </div>
+        <button
+          onClick={handleSeedAll}
+          disabled={seeding}
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold shadow-xs disabled:opacity-50 transition"
+        >
+          {seeding ? "Provisioning..." : "Sync / Ensure 19 Roles"}
+        </button>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">

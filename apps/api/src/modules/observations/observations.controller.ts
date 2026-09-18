@@ -3,6 +3,7 @@ import { ObservationsService } from "./observations.service";
 import {
   CreateObservationDto,
   ReviewObservationDto,
+  EscalateObservationDto,
 } from "./dto/observation.dto";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "../../common/guards/permissions.guard";
@@ -39,6 +40,16 @@ export class ObservationsController {
     @CurrentUser() user: AuthenticatedUserContext,
   ) {
     return this.observationsService.findById(id, user);
+  }
+
+  @Post(":id/escalate")
+  @RequirePermissions(Permissions.OBSERVATION_READ)
+  escalate(
+    @Param("id") id: string,
+    @Body() dto: EscalateObservationDto,
+    @CurrentUser() user: AuthenticatedUserContext,
+  ) {
+    return this.observationsService.escalate(id, dto, user);
   }
 
   @Post(":id/actions/review")
