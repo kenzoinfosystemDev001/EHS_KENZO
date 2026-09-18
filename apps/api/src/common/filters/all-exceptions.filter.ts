@@ -33,11 +33,21 @@ export class AllExceptionsFilter implements ExceptionFilter {
         errorType =
           ((res as Record<string, unknown>).error as string) || exception.name;
       }
+    } else if (
+      exception &&
+      typeof exception === "object" &&
+      ("status" in exception || "statusCode" in exception || "type" in exception)
+    ) {
+      const exObj = exception as any;
+      status = exObj.status || exObj.statusCode || HttpStatus.BAD_REQUEST;
+      message = exObj.message || "Request validation failed";
+      errorType = exObj.type || exObj.name || "RequestError";
     } else if (exception instanceof Error) {
       this.logger.error(
         `[${requestId}] Unhandled Exception: ${exception.message}`,
         exception.stack,
       );
+      message = exception.message || "Internal server error occurred";
     }
 
     const errorDetails = Array.isArray(message)

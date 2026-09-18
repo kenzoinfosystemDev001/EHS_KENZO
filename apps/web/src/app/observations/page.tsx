@@ -32,6 +32,50 @@ const STAGE_DEFINITIONS = [
   { stage: 8, key: "PENDING_ADMIN_APPROVAL", name: "Admin Resource Scheduling", role: "ADMIN", title: "Admin", icon: Coins },
 ];
 
+function compressImageFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 1600;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_DIM) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          }
+        } else {
+          if (height > MAX_DIM) {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(event.target?.result as string);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        const format = file.type === "image/png" ? "image/png" : "image/jpeg";
+        const compressedBase64 = canvas.toDataURL(format, 0.85);
+        resolve(compressedBase64);
+      };
+      img.onerror = () => reject(new Error("Failed to process image"));
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function ObservationsPage() {
   const { user } = useAuth();
   const [data, setData] = useState<any[]>([]);
@@ -78,7 +122,7 @@ export default function ObservationsPage() {
     }
   };
 
-  const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const validTypes = ["image/jpeg", "image/png", "image/jpg"];
@@ -88,13 +132,19 @@ export default function ObservationsPage() {
         e.target.value = "";
         return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setPhotoPreview(base64);
-        setFormData((prev) => ({ ...prev, photoData: base64 }));
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImageFile(file);
+        setPhotoPreview(compressed);
+        setFormData((prev) => ({ ...prev, photoData: compressed }));
+      } catch {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = reader.result as string;
+          setPhotoPreview(base64);
+          setFormData((prev) => ({ ...prev, photoData: base64 }));
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 

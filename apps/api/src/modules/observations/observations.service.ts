@@ -116,6 +116,18 @@ export class ObservationsService {
   }
 
   async create(dto: any, user: AuthenticatedUserContext) {
+    // 1. Process and validate photo upload to Cloudinary (strictly .jpg & .png) outside DB transaction
+    let photo = dto.photoData || dto.evidenceKey || (dto.imageUrls && dto.imageUrls[0]) || null;
+    if (photo && (photo.startsWith("data:image/") || photo.startsWith("/9j/") || photo.startsWith("iVBORw0KGgo"))) {
+      try {
+        const uploadRes = await this.cloudinary.uploadImage(photo, "kenzo-ehs/observations");
+        photo = uploadRes.url;
+      } catch (err: any) {
+        this.logger.error(`Cloudinary upload failed in create: ${err.message}`, err.stack);
+        throw new BadRequestException(err.message || "Failed to upload image to Cloudinary");
+      }
+    }
+
     return this.prisma.$transaction(async (tx) => {
       let plantId = dto.plantId;
       if (!plantId) {
@@ -143,13 +155,6 @@ export class ObservationsService {
       });
       const seq = String(refCount + 1).padStart(4, "0");
       const referenceNumber = `OBS-2026-${seq}`;
-
-      // Process and validate photo upload to Cloudinary (strictly .jpg & .png)
-      let photo = dto.photoData || dto.evidenceKey || (dto.imageUrls && dto.imageUrls[0]) || null;
-      if (photo && (photo.startsWith("data:image/") || photo.startsWith("/9j/") || photo.startsWith("iVBORw0KGgo"))) {
-        const uploadRes = await this.cloudinary.uploadImage(photo, "kenzo-ehs/observations");
-        photo = uploadRes.url;
-      }
 
       const obsType = dto.observationType || dto.type || ObservationType.UNSAFE_CONDITION;
       const severity = dto.severity || IncidentSeverity.MEDIUM;
