@@ -32,6 +32,17 @@ const STAGE_DEFINITIONS = [
   { stage: 8, key: "PENDING_ADMIN_APPROVAL", name: "Admin Resource Scheduling", role: "ADMIN", title: "Admin", icon: Coins },
 ];
 
+const STAGE_REQUIRED_ROLES: Record<number, string> = {
+  1: "WORKER",
+  2: "SUPERVISOR",
+  3: "DEPARTMENT_HEAD",
+  4: "CONTRACTOR_COORDINATOR",
+  5: "HSE_MANAGER",
+  6: "OCCUPATIONAL_HEALTH_OFFICER",
+  7: "CORPORATE_HSE",
+  8: "ADMIN",
+};
+
 function compressImageFile(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -193,8 +204,22 @@ export default function ObservationsPage() {
     }
   };
 
+  const isUserAuthorizedForStage = (stageIdx: number): boolean => {
+    const reqRole = STAGE_REQUIRED_ROLES[stageIdx];
+    if (!reqRole) return false;
+    return !!user?.roles?.includes(reqRole);
+  };
+
   const handleEscalate = async (action: string) => {
     if (!selectedObs) return;
+
+    if (!isUserAuthorizedForStage(currentIdx)) {
+      alert(
+        `Permission Denied: Your active role is '${user?.roles?.join(", ") || "None"}'. Only users with the '${STAGE_DEFINITIONS[currentIdx - 1]?.title}' (${STAGE_REQUIRED_ROLES[currentIdx]}) role are permitted to approve Stage ${currentIdx}.`,
+      );
+      return;
+    }
+
     try {
       setEscalating(true);
       const payload: any = {
@@ -275,6 +300,13 @@ export default function ObservationsPage() {
   };
 
   const handleActiveStageAction = async () => {
+    if (!isUserAuthorizedForStage(currentIdx)) {
+      alert(
+        `Permission Denied: Your active role is '${user?.roles?.join(", ") || "None"}'. Only users with the '${STAGE_DEFINITIONS[currentIdx - 1]?.title}' (${STAGE_REQUIRED_ROLES[currentIdx]}) role are permitted to approve Stage ${currentIdx}.`,
+      );
+      return;
+    }
+
     switch (currentIdx) {
       case 2:
         await handleEscalate("PASS_TO_DEPT_HEAD");
@@ -500,7 +532,9 @@ export default function ObservationsPage() {
                             className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-lg transition shadow-xs ${
                               isFullyResolved
                                 ? "text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200"
-                                : "text-white bg-sky-600 hover:bg-sky-700"
+                                : isUserAuthorizedForStage(stageIdx)
+                                ? "text-white bg-emerald-600 hover:bg-emerald-700 ring-2 ring-emerald-300"
+                                : "text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200"
                             }`}
                           >
                             {isFullyResolved ? (
@@ -508,10 +542,15 @@ export default function ObservationsPage() {
                                 <Eye className="w-3.5 h-3.5" />
                                 View Details
                               </>
-                            ) : (
+                            ) : isUserAuthorizedForStage(stageIdx) ? (
                               <>
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                 Review &amp; Approve (Stage {stageIdx})
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="w-3.5 h-3.5" />
+                                View Lifecycle (Stage {stageIdx})
                               </>
                             )}
                           </button>
@@ -749,186 +788,215 @@ export default function ObservationsPage() {
 
                 {/* 1. Dedicated Action & Approval Card (Prominently displayed at the top) */}
                 {currentIdx < 9 ? (
-                  <div className="p-4 rounded-xl border-2 border-sky-300 bg-sky-50/70 shadow-sm space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="flex h-3 w-3 relative">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-sky-600"></span>
+                  isUserAuthorizedForStage(currentIdx) ? (
+                    <div className="p-4 rounded-xl border-2 border-emerald-300 bg-emerald-50/70 shadow-sm space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-3 w-3 relative">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-600"></span>
+                          </span>
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-950">
+                            Action Required: Stage {currentIdx} - {STAGE_DEFINITIONS[currentIdx - 1]?.name}
+                          </h4>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 uppercase tracking-wide">
+                          Authorized: {STAGE_DEFINITIONS[currentIdx - 1]?.title}
                         </span>
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-sky-950">
-                          Pending Action: Stage {currentIdx} - {STAGE_DEFINITIONS[currentIdx - 1]?.name}
-                        </h4>
                       </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-200 text-sky-900 uppercase tracking-wide">
-                        Assigned Role: {STAGE_DEFINITIONS[currentIdx - 1]?.title}
-                      </span>
+
+                      <p className="text-xs text-slate-600">
+                        You are logged in with the authorized <strong>{STAGE_DEFINITIONS[currentIdx - 1]?.title} ({STAGE_REQUIRED_ROLES[currentIdx]})</strong> role. Please review and execute your stage verification.
+                      </p>
+
+                      {currentIdx === 8 ? (
+                        <div className="space-y-3 bg-white p-3.5 rounded-lg border border-emerald-200">
+                          <div className="text-xs font-bold text-slate-800">
+                            Final Admin Authorization & Resource Allocation
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                              Assign Fixing Staff / Team *
+                            </label>
+                            <input
+                              type="text"
+                              value={adminStaff}
+                              onChange={(e) => setAdminStaff(e.target.value)}
+                              placeholder="e.g. Manoj Patil (Maintenance Head) or Electrical Crew"
+                              className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-sky-500"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                                Decided Time Slot *
+                              </label>
+                              <input
+                                type="text"
+                                value={adminSlot}
+                                onChange={(e) => setAdminSlot(e.target.value)}
+                                placeholder="e.g. Tomorrow 10:00 AM - 01:00 PM"
+                                className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-sky-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                                Allocated Repair Funds *
+                              </label>
+                              <input
+                                type="text"
+                                value={adminFunds}
+                                onChange={(e) => setAdminFunds(e.target.value)}
+                                placeholder="e.g. ₹15,000 or $2,000"
+                                className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-sky-500"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                              Admin Approval Directives / Comments
+                            </label>
+                            <input
+                              type="text"
+                              value={escalateComments}
+                              onChange={(e) => setEscalateComments(e.target.value)}
+                              placeholder="e.g. Approved. Issue PTW and initiate fixing immediately."
+                              className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-sky-500"
+                            />
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled={escalating || !adminStaff || !adminSlot || !adminFunds}
+                            onClick={() => handleEscalate("ADMIN_APPROVE_AND_SCHEDULE")}
+                            className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+                          >
+                            {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
+                            Approve, Assign Staff, Slot & Funds &rarr; Schedule Fixing
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 bg-white p-3.5 rounded-lg border border-emerald-200">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                              Verification Remarks / Notes
+                            </label>
+                            <input
+                              type="text"
+                              value={escalateComments}
+                              onChange={(e) => setEscalateComments(e.target.value)}
+                              placeholder={`Enter ${STAGE_DEFINITIONS[currentIdx - 1]?.title} remarks...`}
+                              className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-sky-500"
+                            />
+                          </div>
+
+                          <div className="flex gap-2">
+                            {currentIdx === 2 && (
+                              <button
+                                type="button"
+                                disabled={escalating}
+                                onClick={() => handleEscalate("PASS_TO_DEPT_HEAD")}
+                                className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition"
+                              >
+                                {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
+                                ✓ Verify on Site &rarr; Pass to Dept Head
+                              </button>
+                            )}
+
+                            {currentIdx === 3 && (
+                              <button
+                                type="button"
+                                disabled={escalating}
+                                onClick={() => handleEscalate("PASS_TO_CONTRACTOR")}
+                                className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition"
+                              >
+                                {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
+                                ✓ Review Impact &rarr; Pass to Contractor
+                              </button>
+                            )}
+
+                            {currentIdx === 4 && (
+                              <button
+                                type="button"
+                                disabled={escalating}
+                                onClick={() => handleEscalate("PASS_TO_HSE_MANAGER")}
+                                className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition"
+                              >
+                                {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
+                                ✓ Assess Repairs &rarr; Pass to HSE Manager
+                              </button>
+                            )}
+
+                            {currentIdx === 5 && (
+                              <button
+                                type="button"
+                                disabled={escalating}
+                                onClick={() => handleEscalate("PASS_TO_HEALTH_INSPECTOR")}
+                                className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition"
+                              >
+                                {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
+                                ✓ Verify Safety &rarr; Pass to Health Inspector
+                              </button>
+                            )}
+
+                            {currentIdx === 6 && (
+                              <button
+                                type="button"
+                                disabled={escalating}
+                                onClick={() => handleEscalate("PASS_TO_SUB_ADMIN")}
+                                className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition"
+                              >
+                                {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
+                                ✓ Clear Health Protocol &rarr; Pass to Sub Admin
+                              </button>
+                            )}
+
+                            {currentIdx === 7 && (
+                              <button
+                                type="button"
+                                disabled={escalating}
+                                onClick={() => handleEscalate("PASS_TO_ADMIN")}
+                                className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition"
+                              >
+                                {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
+                                ✓ Pre-Approve Risk &rarr; Pass to Admin
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
-
-                    <p className="text-xs text-slate-600">
-                      As the designated reviewer, verify the hazard conditions and approve to advance this observation along the hierarchy.
-                    </p>
-
-                    {currentIdx === 8 ? (
-                      <div className="space-y-3 bg-white p-3.5 rounded-lg border border-sky-200">
-                        <div className="text-xs font-bold text-slate-800">
-                          Final Admin Authorization & Resource Allocation
+                  ) : (
+                    <div className="p-4 rounded-xl border border-amber-300 bg-amber-50/70 shadow-xs space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <ShieldAlert className="w-4 h-4 text-amber-600" />
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-amber-950">
+                            Stage {currentIdx}: {STAGE_DEFINITIONS[currentIdx - 1]?.name} &bull; Awaiting Role Authorization
+                          </h4>
                         </div>
-
-                        <div>
-                          <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                            Assign Fixing Staff / Team *
-                          </label>
-                          <input
-                            type="text"
-                            value={adminStaff}
-                            onChange={(e) => setAdminStaff(e.target.value)}
-                            placeholder="e.g. Manoj Patil (Maintenance Head) or Electrical Crew"
-                            className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-sky-500"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                              Decided Time Slot *
-                            </label>
-                            <input
-                              type="text"
-                              value={adminSlot}
-                              onChange={(e) => setAdminSlot(e.target.value)}
-                              placeholder="e.g. Tomorrow 10:00 AM - 01:00 PM"
-                              className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-sky-500"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                              Allocated Repair Funds *
-                            </label>
-                            <input
-                              type="text"
-                              value={adminFunds}
-                              onChange={(e) => setAdminFunds(e.target.value)}
-                              placeholder="e.g. ₹15,000 or $2,000"
-                              className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-sky-500"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                            Admin Approval Directives / Comments
-                          </label>
-                          <input
-                            type="text"
-                            value={escalateComments}
-                            onChange={(e) => setEscalateComments(e.target.value)}
-                            placeholder="e.g. Approved. Issue PTW and initiate fixing immediately."
-                            className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-sky-500"
-                          />
-                        </div>
-
-                        <button
-                          type="button"
-                          disabled={escalating || !adminStaff || !adminSlot || !adminFunds}
-                          onClick={() => handleEscalate("ADMIN_APPROVE_AND_SCHEDULE")}
-                          className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
-                        >
-                          {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
-                          Approve, Assign Staff, Slot & Funds &rarr; Schedule Fixing
-                        </button>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-200 text-amber-900 uppercase tracking-wide">
+                          Restricted to: {STAGE_DEFINITIONS[currentIdx - 1]?.title}
+                        </span>
                       </div>
-                    ) : (
-                      <div className="space-y-3 bg-white p-3.5 rounded-lg border border-sky-200">
+
+                      <p className="text-xs text-slate-700">
+                        🔒 <strong>Approval Restricted:</strong> Only employees with the designated <strong>{STAGE_DEFINITIONS[currentIdx - 1]?.title} ({STAGE_REQUIRED_ROLES[currentIdx]})</strong> role have permission to verify and advance Stage {currentIdx}.
+                      </p>
+
+                      <div className="text-[11px] bg-white p-2.5 rounded-lg border border-amber-200 flex items-center justify-between text-slate-600">
                         <div>
-                          <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                            Verification Remarks / Notes
-                          </label>
-                          <input
-                            type="text"
-                            value={escalateComments}
-                            onChange={(e) => setEscalateComments(e.target.value)}
-                            placeholder={`Enter ${STAGE_DEFINITIONS[currentIdx - 1]?.title} remarks...`}
-                            className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-sky-500"
-                          />
+                          Your Active Role: <strong className="text-slate-900">{user?.roles?.join(", ") || "None"}</strong> ({user?.email})
                         </div>
-
-                        <div className="flex gap-2">
-                          {currentIdx === 2 && (
-                            <button
-                              type="button"
-                              disabled={escalating}
-                              onClick={() => handleEscalate("PASS_TO_DEPT_HEAD")}
-                              className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition"
-                            >
-                              {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
-                              ✓ Verify on Site &rarr; Pass to Dept Head
-                            </button>
-                          )}
-
-                          {currentIdx === 3 && (
-                            <button
-                              type="button"
-                              disabled={escalating}
-                              onClick={() => handleEscalate("PASS_TO_CONTRACTOR")}
-                              className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition"
-                            >
-                              {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
-                              ✓ Review Impact &rarr; Pass to Contractor
-                            </button>
-                          )}
-
-                          {currentIdx === 4 && (
-                            <button
-                              type="button"
-                              disabled={escalating}
-                              onClick={() => handleEscalate("PASS_TO_HSE_MANAGER")}
-                              className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition"
-                            >
-                              {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
-                              ✓ Assess Repairs &rarr; Pass to HSE Manager
-                            </button>
-                          )}
-
-                          {currentIdx === 5 && (
-                            <button
-                              type="button"
-                              disabled={escalating}
-                              onClick={() => handleEscalate("PASS_TO_HEALTH_INSPECTOR")}
-                              className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition"
-                            >
-                              {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
-                              ✓ Verify Safety &rarr; Pass to Health Inspector
-                            </button>
-                          )}
-
-                          {currentIdx === 6 && (
-                            <button
-                              type="button"
-                              disabled={escalating}
-                              onClick={() => handleEscalate("PASS_TO_SUB_ADMIN")}
-                              className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition"
-                            >
-                              {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
-                              ✓ Clear Health Protocol &rarr; Pass to Sub Admin
-                            </button>
-                          )}
-
-                          {currentIdx === 7 && (
-                            <button
-                              type="button"
-                              disabled={escalating}
-                              onClick={() => handleEscalate("PASS_TO_ADMIN")}
-                              className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition"
-                            >
-                              {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
-                              ✓ Pre-Approve Risk &rarr; Pass to Admin
-                            </button>
-                          )}
-                        </div>
+                        <span className="text-[10px] font-semibold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-200">
+                          Read-Only Oversight
+                        </span>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )
                 ) : (
                   <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900 space-y-2">
                     <div className="flex items-center gap-2">
@@ -1030,18 +1098,26 @@ export default function ObservationsPage() {
 
                                 {isCurrent && currentIdx < 9 && (
                                   <div className="mt-2.5 pt-2 border-t border-sky-200 flex items-center justify-between gap-2">
-                                    <span className="text-[11px] font-semibold text-sky-800">
-                                      ⚡ Awaiting verification by {stage.title}
+                                    <span className="text-[11px] font-semibold text-sky-800 flex items-center gap-1.5">
+                                      {isUserAuthorizedForStage(stage.stage)
+                                        ? "⚡ Your turn to verify & approve"
+                                        : `🔒 Awaiting verification by ${stage.title}`}
                                     </span>
-                                    <button
-                                      type="button"
-                                      disabled={escalating}
-                                      onClick={() => handleActiveStageAction()}
-                                      className="px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded text-[11px] font-bold shadow-xs transition flex items-center gap-1 disabled:opacity-50"
-                                    >
-                                      {escalating && <Loader2 className="w-3 h-3 animate-spin" />}
-                                      Approve Step &rarr;
-                                    </button>
+                                    {isUserAuthorizedForStage(stage.stage) ? (
+                                      <button
+                                        type="button"
+                                        disabled={escalating}
+                                        onClick={() => handleActiveStageAction()}
+                                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-bold shadow-xs transition flex items-center gap-1 disabled:opacity-50"
+                                      >
+                                        {escalating && <Loader2 className="w-3 h-3 animate-spin" />}
+                                        Approve Step &rarr;
+                                      </button>
+                                    ) : (
+                                      <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                        Requires {stage.role}
+                                      </span>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -1070,7 +1146,15 @@ export default function ObservationsPage() {
                 <div className="text-xs text-slate-600 truncate">
                   {currentIdx < 9 ? (
                     <span className="font-semibold text-slate-800">
-                      Active: <span className="text-sky-700 font-bold">Stage {currentIdx} ({STAGE_DEFINITIONS[currentIdx - 1]?.title})</span>
+                      Active:{" "}
+                      <span className="text-sky-700 font-bold">
+                        Stage {currentIdx} ({STAGE_DEFINITIONS[currentIdx - 1]?.title})
+                      </span>
+                      {!isUserAuthorizedForStage(currentIdx) && (
+                        <span className="ml-2 text-amber-700 text-[11px] font-semibold">
+                          (Requires {STAGE_DEFINITIONS[currentIdx - 1]?.role})
+                        </span>
+                      )}
                     </span>
                   ) : (
                     <span className="font-semibold text-emerald-700">
@@ -1085,7 +1169,7 @@ export default function ObservationsPage() {
                   >
                     Close
                   </button>
-                  {currentIdx < 9 && (
+                  {currentIdx < 9 && isUserAuthorizedForStage(currentIdx) && (
                     <button
                       type="button"
                       disabled={escalating}

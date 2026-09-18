@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from "@nestjs/common";
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { OutboxService } from "../outbox/outbox.service";
@@ -453,6 +453,23 @@ export class ObservationsService {
 
         default:
           throw new BadRequestException(`Unrecognized escalation action: ${dto.action}`);
+      }
+
+      // 1. Verify that the workflow is actually at this stage
+      const expectedStageIdx = rawContext.currentStageIndex || 2;
+      if (completedStageIdx !== expectedStageIdx) {
+        throw new BadRequestException(
+          `Invalid workflow step: This observation is currently at Stage ${expectedStageIdx} (${OBSERVATION_WORKFLOW_STAGES[expectedStageIdx - 1]?.name}), cannot approve Stage ${completedStageIdx}.`,
+        );
+      }
+
+      // 2. STRICT ROLE-BASED ACCESS CONTROL ENFORCEMENT:
+      // Only users who possess the permitted role for this specific stage are authorized to approve.
+      const userRoles = user.roles || [];
+      if (!userRoles.includes(actorRole)) {
+        throw new ForbiddenException(
+          `Forbidden: You do not have permission to approve Stage ${completedStageIdx} (${OBSERVATION_WORKFLOW_STAGES[completedStageIdx - 1]?.name}). This step strictly requires the '${actorRole}' role. Your active roles are: [${userRoles.join(", ")}].`,
+        );
       }
 
       // Update stage records in context
