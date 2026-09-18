@@ -63,3 +63,13 @@ Thumbs.db
 tmp/
 temp/
 scratch/
+
+
+# Claude Code internal worktrees
+.claude/worktrees/
+
+# Local Claude Code settings
+.claude/settings.local.json
+
+# Graphify generated output
+graphify-out/

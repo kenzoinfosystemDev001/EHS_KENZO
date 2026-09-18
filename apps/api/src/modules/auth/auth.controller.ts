@@ -47,11 +47,13 @@ export class AuthController {
 
     const result = await this.authService.login(dto, ip, userAgent);
 
+    const isProd = process.env.NODE_ENV === "production";
+
     // Set secure HTTP-only cookies where appropriate
     res.cookie("kenzo_refresh_token", result.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: isProd,
+      sameSite: isProd ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -76,10 +78,11 @@ export class AuthController {
 
     const result = await this.authService.refresh(dto, ip, userAgent);
 
+    const isProd = process.env.NODE_ENV === "production";
     res.cookie("kenzo_refresh_token", result.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: isProd,
+      sameSite: isProd ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -96,7 +99,12 @@ export class AuthController {
     @CurrentUser("sessionId") sessionId: string,
     @Res({ passthrough: true }) res: Response,
   ) {
-    res.clearCookie("kenzo_refresh_token");
+    const isProd = process.env.NODE_ENV === "production";
+    res.clearCookie("kenzo_refresh_token", {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? "none" : "lax",
+    });
     return this.authService.logout(sessionId);
   }
 
