@@ -1,35 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
-import { apiClient } from "../../lib/api";
-
-interface AppUser {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  roles: string[];
-}
+import { useAuth } from "../../lib/auth-context";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AppUser | undefined>(undefined);
+  const { user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        const res = await apiClient<AppUser>("/auth/me");
-        if (res.success && res.data) {
-          setUser(res.data);
-        }
-      } catch {
-        // Fallback default for dev preview
-      }
-    }
-    loadUser();
-  }, []);
 
   return (
     <div className="flex min-h-screen bg-slate-50 relative">
@@ -39,7 +17,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar
-          user={user}
+          user={user || undefined}
           onToggleMobileMenu={() => setIsMobileMenuOpen((prev) => !prev)}
         />
         <main className="flex-1 p-3 sm:p-6 lg:p-8 overflow-y-auto">

@@ -9,7 +9,7 @@ import React, {
   useRef,
 } from "react";
 
-import { getApiBaseUrl } from "./api";
+import { getApiBaseUrl, setApiToken } from "./api";
 
 export interface UserProfile {
   id: string;
@@ -80,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (data.success && data.data.accessToken) {
             const newToken = data.data.accessToken;
             setAccessToken(newToken);
+            setApiToken(newToken);
             if (typeof window !== "undefined") {
               localStorage.setItem(ACCESS_TOKEN_KEY, newToken);
               if (data.data.refreshToken) {
@@ -101,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setClientSessionCookie(false);
       setUser(null);
       setAccessToken(null);
+      setApiToken(null);
       return null;
     })().finally(() => {
       refreshingRef.current = null;
@@ -119,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (cachedUser && cachedToken) {
             setUser(JSON.parse(cachedUser));
             setAccessToken(cachedToken);
+            setApiToken(cachedToken);
             setClientSessionCookie(true);
           }
         } catch {
@@ -145,6 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (data.success && data.data.accessToken) {
             const token = data.data.accessToken;
             setAccessToken(token);
+            setApiToken(token);
             if (typeof window !== "undefined") {
               localStorage.setItem(ACCESS_TOKEN_KEY, token);
               if (data.data.refreshToken) {
@@ -213,6 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
     }
     setAccessToken(data.data.accessToken);
+    setApiToken(data.data.accessToken);
     setUser(data.data.user);
 
     if (typeof window !== "undefined") {
@@ -244,6 +249,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setClientSessionCookie(false);
       setUser(null);
       setAccessToken(null);
+      setApiToken(null);
     }
   }, [accessToken]);
 

@@ -40,9 +40,25 @@ export interface ApiResponse<T> {
   };
 }
 
-// Token is injected by the auth context at runtime
+// Token is injected by the auth context at runtime or hydrated from localStorage
 let _accessToken: string | null = null;
 let _onUnauthorized: (() => Promise<string | null>) | null = null;
+
+export function getEffectiveApiToken(): string | null {
+  if (_accessToken) return _accessToken;
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("kenzo_access_token");
+      if (stored) {
+        _accessToken = stored;
+        return stored;
+      }
+    } catch {
+      // Ignore storage errors in restricted contexts
+    }
+  }
+  return null;
+}
 
 export function setApiToken(token: string | null) {
   _accessToken = token;
@@ -61,8 +77,9 @@ export async function apiClient<T>(
     if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
       headers.set("Content-Type", "application/json");
     }
-    if (token && !headers.has("Authorization")) {
-      headers.set("Authorization", `Bearer ${token}`);
+    const authToken = token || getEffectiveApiToken();
+    if (authToken && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${authToken}`);
     }
 
     const baseUrl = getApiBaseUrl();
@@ -81,7 +98,8 @@ export async function apiClient<T>(
     });
   };
 
-  let res = await doRequest(_accessToken);
+  const initialToken = getEffectiveApiToken();
+  let res = await doRequest(initialToken);
 
   // Auto-refresh on 401
   if (res.status === 401 && _onUnauthorized) {

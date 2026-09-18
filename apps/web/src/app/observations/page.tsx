@@ -120,7 +120,7 @@ export default function ObservationsPage() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -471,6 +471,8 @@ export default function ObservationsPage() {
                               <img
                                 src={row.evidenceKey}
                                 alt="Hazard evidence"
+                                crossOrigin="anonymous"
+                                referrerPolicy="no-referrer"
                                 className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
                               />
                               <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
@@ -812,6 +814,8 @@ export default function ObservationsPage() {
                         <img
                           src={selectedObs.evidenceKey}
                           alt="Hazard Evidence"
+                          crossOrigin="anonymous"
+                          referrerPolicy="no-referrer"
                           className="w-24 h-24 sm:w-28 sm:h-28 object-cover transition duration-200 group-hover:scale-105"
                         />
                         {/* Hover Overlay with Zoom Icon */}
@@ -1307,6 +1311,8 @@ export default function ObservationsPage() {
               <img
                 src={previewImage}
                 alt="Hazard Evidence Full View"
+                crossOrigin="anonymous"
+                referrerPolicy="no-referrer"
                 className="max-w-full max-h-[80vh] w-auto h-auto object-contain rounded-xl select-none"
               />
             </div>
