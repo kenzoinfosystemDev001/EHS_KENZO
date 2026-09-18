@@ -11,11 +11,21 @@ export class EnvironmentService {
     });
   }
   async logMetric(dto: any, user: AuthenticatedUserContext) {
+    let plantId = dto.plantId;
+    if (!plantId) {
+      const plant = await this.prisma.plant.findFirst({ where: { organizationId: user.organizationId } });
+      plantId = plant?.id || "PLANT-DEFAULT";
+    }
+
     return this.prisma.environmentalMetric.create({
       data: {
-        ...dto,
         organizationId: user.organizationId,
-        logDate: new Date(dto.logDate),
+        plantId,
+        metricType: dto.metricType || "SCOPE_1_CO2",
+        quantity: dto.quantity !== undefined ? Number(dto.quantity) : 100,
+        unit: dto.unit || "MT",
+        logDate: new Date(dto.logDate || Date.now()),
+        notes: dto.notes || dto.description || null,
       },
     });
   }

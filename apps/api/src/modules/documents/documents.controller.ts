@@ -45,13 +45,13 @@ export class DocumentsController {
   }
 
   @Get()
-  @ApiOperation({ summary: "Find documents associated with an entity" })
-  @ApiQuery({ name: "entityType", required: true })
-  @ApiQuery({ name: "entityId", required: true })
+  @ApiOperation({ summary: "List organization documents or filter by entity" })
+  @ApiQuery({ name: "entityType", required: false })
+  @ApiQuery({ name: "entityId", required: false })
   async findByEntity(
-    @Query("entityType") entityType: string,
-    @Query("entityId") entityId: string,
     @CurrentUser() user: AuthenticatedUserContext,
+    @Query("entityType") entityType?: string,
+    @Query("entityId") entityId?: string,
   ) {
     return this.documentsService.findByEntity(entityType, entityId, user);
   }

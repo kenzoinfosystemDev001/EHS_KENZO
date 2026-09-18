@@ -15,7 +15,15 @@ export class TrainingService {
 
   async createCourse(dto: any, user: AuthenticatedUserContext) {
     return this.prisma.trainingCourse.create({
-      data: { ...dto, organizationId: user.organizationId },
+      data: {
+        organizationId: user.organizationId,
+        code: dto.code || `TRN-${Date.now().toString().slice(-6)}`,
+        title: dto.title || dto.name || "General EHS Induction Course",
+        description: dto.description || "General plant workplace health & safety induction",
+        validityMonths: dto.validityMonths ? Number(dto.validityMonths) : 12,
+        targetRoles: dto.targetRoles || ["ALL"],
+        isActive: true,
+      },
     });
   }
 

@@ -17,6 +17,22 @@ import { Permissions } from "@kenzo-ehs/types";
 @UseGuards(JwtAuthGuard, PermissionsGuard, ScopeGuard)
 export class TrainingController {
   constructor(private readonly trainingService: TrainingService) {}
+
+  @Get()
+  @RequirePermissions(Permissions.TRAINING_READ)
+  findAll(@CurrentUser() user: AuthenticatedUserContext) {
+    return this.trainingService.getCourses(user);
+  }
+
+  @Post()
+  @RequirePermissions(Permissions.TRAINING_MANAGE)
+  create(
+    @Body() dto: any,
+    @CurrentUser() user: AuthenticatedUserContext,
+  ) {
+    return this.trainingService.createCourse(dto, user);
+  }
+
   @Get("courses") @RequirePermissions(Permissions.TRAINING_READ) getCourses(
     @CurrentUser() user: AuthenticatedUserContext,
   ) {

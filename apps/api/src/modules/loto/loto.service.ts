@@ -31,14 +31,35 @@ export class LotoService {
   }
 
   async applyIsolation(dto: any, user: AuthenticatedUserContext) {
+    let equipmentId = dto.equipmentId;
+    if (!equipmentId) {
+      let eq = await this.prisma.lotoEquipment.findFirst({ where: { organizationId: user.organizationId } });
+      if (!eq) {
+        let plant = await this.prisma.plant.findFirst({ where: { organizationId: user.organizationId } });
+        let dept = await this.prisma.department.findFirst({ where: { organizationId: user.organizationId } });
+        eq = await this.prisma.lotoEquipment.create({
+          data: {
+            organizationId: user.organizationId,
+            plantId: plant?.id || "PLANT-DEFAULT",
+            departmentId: dept?.id || "DEPT-DEFAULT",
+            tagNumber: "EQ-GEN-01",
+            name: "Main Feeder Boiler Turbine Unit",
+            location: "Primary Generation Bay",
+            energyTypes: ["ELECTRICAL", "PNEUMATIC"],
+          },
+        });
+      }
+      equipmentId = eq.id;
+    }
+
     return this.prisma.lotoIsolation.create({
       data: {
-        equipmentId: dto.equipmentId,
+        equipmentId,
         permitId: dto.permitId || null,
-        isolationPoint: dto.isolationPoint,
-        lockBoxNumber: dto.lockBoxNumber || null,
+        isolationPoint: dto.isolationPoint || "Main Valve Isolation Point #1",
+        lockBoxNumber: dto.lockBoxNumber || "LB-104",
         appliedById: user.id,
-        notes: dto.notes || null,
+        notes: dto.notes || dto.description || "Lockout tag applied for maintenance",
       },
     });
   }

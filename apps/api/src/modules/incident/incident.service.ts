@@ -138,7 +138,7 @@ export class IncidentService {
     }, TX_CONFIG);
   }
 
-  async findAll(user: AuthenticatedUserContext, plantId?: string) {
+  async findAll(user: AuthenticatedUserContext, plantId?: string, type?: string) {
     const isGlobal = user.roleScopes.some(
       (s) =>
         s.scope === AccessScope.SYSTEM ||
@@ -157,6 +157,9 @@ export class IncidentService {
     if (plantId) {
       this.assertPlantAccess(plantId, user);
       where.plantId = plantId;
+    }
+    if (type) {
+      where.incidentType = type;
     }
 
     return this.prisma.incident.findMany({

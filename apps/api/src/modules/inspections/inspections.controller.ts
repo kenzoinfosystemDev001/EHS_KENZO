@@ -13,6 +13,22 @@ import { Permissions } from "@kenzo-ehs/types";
 @UseGuards(JwtAuthGuard, PermissionsGuard, ScopeGuard)
 export class InspectionsController {
   constructor(private readonly inspectionsService: InspectionsService) {}
+
+  @Get()
+  @RequirePermissions(Permissions.INSPECTION_READ)
+  findAll(@CurrentUser() user: AuthenticatedUserContext) {
+    return this.inspectionsService.getExecutions(user);
+  }
+
+  @Post()
+  @RequirePermissions(Permissions.INSPECTION_CREATE)
+  create(
+    @Body() dto: any,
+    @CurrentUser() user: AuthenticatedUserContext,
+  ) {
+    return this.inspectionsService.executeInspection(dto, user);
+  }
+
   @Get("templates")
   @RequirePermissions(Permissions.INSPECTION_READ)
   getTemplates(@CurrentUser() user: AuthenticatedUserContext) {

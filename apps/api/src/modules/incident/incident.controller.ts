@@ -46,12 +46,14 @@ export class IncidentController {
   @Get()
   @RequirePermissions(Permissions.INCIDENT_READ)
   @ApiQuery({ name: "plantId", required: false })
-  @ApiOperation({ summary: "List incidents filtered by scope" })
+  @ApiQuery({ name: "type", required: false })
+  @ApiOperation({ summary: "List incidents filtered by scope and type" })
   async findAll(
     @CurrentUser() user: AuthenticatedUserContext,
     @Query("plantId") plantId?: string,
+    @Query("type") type?: string,
   ) {
-    return this.incidentService.findAll(user, plantId);
+    return this.incidentService.findAll(user, plantId, type);
   }
 
   @Get(":id")

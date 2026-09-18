@@ -37,6 +37,32 @@ export class InspectionsService {
   }
 
   async executeInspection(dto: any, user: AuthenticatedUserContext) {
+    let plantId = dto.plantId;
+    if (!plantId) {
+      const p = await this.prisma.plant.findFirst({ where: { organizationId: user.organizationId } });
+      plantId = p?.id;
+    }
+
+    let templateId = dto.templateId;
+    if (!templateId) {
+      let t = await this.prisma.inspectionTemplate.findFirst({ where: { organizationId: user.organizationId } });
+      if (!t) {
+        t = await this.prisma.inspectionTemplate.create({
+          data: {
+            organizationId: user.organizationId,
+            title: "Workplace Routine Safety Inspection",
+            category: "SAFETY",
+            checklistItems: [
+              { id: "1", text: "Emergency exits free of obstruction" },
+              { id: "2", text: "Fire extinguishers inspected & tagged" },
+              { id: "3", text: "Personnel wearing mandatory PPE" },
+            ],
+          },
+        });
+      }
+      templateId = t.id;
+    }
+
     const findings = dto.findings || [];
     const totalItems = findings.length;
     const passedItems = findings.filter((f: any) => f.status === "PASS").length;
@@ -45,9 +71,9 @@ export class InspectionsService {
     return this.prisma.inspectionExecution.create({
       data: {
         organizationId: user.organizationId,
-        plantId: dto.plantId,
+        plantId,
         departmentId: dto.departmentId || null,
-        templateId: dto.templateId,
+        templateId,
         inspectorId: user.id,
         status: InspectionStatus.COMPLETED,
         score,

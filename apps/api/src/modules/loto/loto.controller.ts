@@ -13,6 +13,22 @@ import { Permissions } from "@kenzo-ehs/types";
 @UseGuards(JwtAuthGuard, PermissionsGuard, ScopeGuard)
 export class LotoController {
   constructor(private readonly lotoService: LotoService) {}
+
+  @Get()
+  @RequirePermissions(Permissions.PTW_READ)
+  findAll(@CurrentUser() user: AuthenticatedUserContext) {
+    return this.lotoService.getIsolations(user);
+  }
+
+  @Post()
+  @RequirePermissions(Permissions.LOTO_APPLY)
+  create(
+    @Body() dto: any,
+    @CurrentUser() user: AuthenticatedUserContext,
+  ) {
+    return this.lotoService.applyIsolation(dto, user);
+  }
+
   @Get("equipment") @RequirePermissions(Permissions.PTW_READ) getEquipment(
     @CurrentUser() user: AuthenticatedUserContext,
   ) {

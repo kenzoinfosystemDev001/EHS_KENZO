@@ -13,6 +13,22 @@ import { Permissions } from "@kenzo-ehs/types";
 @UseGuards(JwtAuthGuard, PermissionsGuard, ScopeGuard)
 export class EmergencyController {
   constructor(private readonly emergencyService: EmergencyService) {}
+
+  @Get()
+  @RequirePermissions(Permissions.EMERGENCY_READ)
+  findAll(@CurrentUser() user: AuthenticatedUserContext) {
+    return this.emergencyService.getDrills(user);
+  }
+
+  @Post()
+  @RequirePermissions(Permissions.EMERGENCY_MANAGE)
+  create(
+    @Body() dto: any,
+    @CurrentUser() user: AuthenticatedUserContext,
+  ) {
+    return this.emergencyService.logDrill(dto, user);
+  }
+
   @Get("drills") @RequirePermissions(Permissions.EMERGENCY_READ) getDrills(
     @CurrentUser() user: AuthenticatedUserContext,
   ) {

@@ -27,17 +27,19 @@ export class DocumentsService {
   }
 
   async findByEntity(
-    entityType: string,
-    entityId: string,
+    entityType: string | undefined,
+    entityId: string | undefined,
     user: AuthenticatedUserContext,
   ) {
+    const where: any = {
+      organizationId: user.organizationId,
+      deletedAt: null,
+    };
+    if (entityType) where.entityType = entityType;
+    if (entityId) where.entityId = entityId;
+
     return this.prisma.document.findMany({
-      where: {
-        organizationId: user.organizationId,
-        entityType,
-        entityId,
-        deletedAt: null,
-      },
+      where,
       include: {
         uploadedBy: {
           select: { id: true, email: true, firstName: true, lastName: true },

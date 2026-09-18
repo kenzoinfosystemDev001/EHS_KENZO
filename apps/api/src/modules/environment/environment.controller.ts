@@ -13,6 +13,22 @@ import { Permissions } from "@kenzo-ehs/types";
 @UseGuards(JwtAuthGuard, PermissionsGuard, ScopeGuard)
 export class EnvironmentController {
   constructor(private readonly environmentService: EnvironmentService) {}
+
+  @Get()
+  @RequirePermissions(Permissions.ENVIRONMENT_READ)
+  findAll(@CurrentUser() user: AuthenticatedUserContext) {
+    return this.environmentService.getMetrics(user);
+  }
+
+  @Post()
+  @RequirePermissions(Permissions.ENVIRONMENT_MANAGE)
+  create(
+    @Body() dto: any,
+    @CurrentUser() user: AuthenticatedUserContext,
+  ) {
+    return this.environmentService.logMetric(dto, user);
+  }
+
   @Get("metrics") @RequirePermissions(Permissions.ENVIRONMENT_READ) getMetrics(
     @CurrentUser() user: AuthenticatedUserContext,
   ) {
