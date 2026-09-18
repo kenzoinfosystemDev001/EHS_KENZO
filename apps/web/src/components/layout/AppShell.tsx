@@ -15,6 +15,7 @@ interface AppUser {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | undefined>(undefined);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     async function loadUser() {
@@ -31,11 +32,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      <Sidebar />
+    <div className="flex min-h-screen bg-slate-50 relative">
+      <Sidebar
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+      />
       <div className="flex-1 flex flex-col min-w-0">
-        <Topbar user={user} />
-        <main className="flex-1 p-8 overflow-y-auto">
+        <Topbar
+          user={user}
+          onToggleMobileMenu={() => setIsMobileMenuOpen((prev) => !prev)}
+        />
+        <main className="flex-1 p-3 sm:p-6 lg:p-8 overflow-y-auto">
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>

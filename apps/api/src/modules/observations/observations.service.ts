@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from "@nes
 import { PrismaService } from "../../database/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { OutboxService } from "../outbox/outbox.service";
+import { CloudinaryService } from "../media/cloudinary.service";
 import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
 import {
   ObservationStatus,
@@ -9,6 +10,9 @@ import {
   ActionSourceType,
   CapaPriority,
   WorkflowStatus,
+  WorkflowTaskStatus,
+  NotificationPriority,
+  NotificationChannel,
   ObservationType,
   IncidentSeverity,
 } from "@prisma/client";
@@ -17,15 +21,69 @@ import { EscalateObservationDto } from "./dto/observation.dto";
 const TX_CONFIG = { maxWait: 20000, timeout: 60000 };
 
 export const OBSERVATION_WORKFLOW_STAGES = [
-  { stage: 1, key: "WORKER_REPORTED", name: "Worker Spots Issue", role: "WORKER", title: "Field Worker" },
+  { stage: 1, key: "WORKER_REPORTED", name: "Worker Spots Issue", role: "WORKER", title: "Field Worker / Workman" },
   { stage: 2, key: "PENDING_WORKER_HEAD", name: "Worker Head Verification", role: "SUPERVISOR", title: "Worker Head / Shift Supervisor" },
   { stage: 3, key: "PENDING_DEPT_HEAD", name: "Department Head Review", role: "DEPARTMENT_HEAD", title: "Head of Department" },
   { stage: 4, key: "PENDING_CONTRACTOR", name: "Contractor Assessment", role: "CONTRACTOR_COORDINATOR", title: "Contractor Coordinator" },
   { stage: 5, key: "PENDING_HSE_MANAGER", name: "HSE Manager Verification", role: "HSE_MANAGER", title: "HSE Manager" },
   { stage: 6, key: "PENDING_HEALTH_INSPECTOR", name: "Health Inspector Clearance", role: "OCCUPATIONAL_HEALTH_OFFICER", title: "Health Inspector / OHO" },
-  { stage: 7, key: "PENDING_SUB_ADMIN", name: "Sub Admin Pre-Approval", role: "CORPORATE_HSE", title: "Sub Admin" },
+  { stage: 7, key: "PENDING_SUB_ADMIN", name: "Sub Admin Pre-Approval", role: "CORPORATE_HSE", title: "Sub Admin / Corporate HSE" },
   { stage: 8, key: "PENDING_ADMIN_APPROVAL", name: "Admin Resource Allocation & Approval", role: "ADMIN", title: "Administrator" },
 ];
+
+export function determineInitialWorkflow(user: AuthenticatedUserContext, description: string, photoUrl: string | null) {
+  const roles = user.roles || [];
+  let startStage = 1;
+
+  if (roles.some((r) => ["ADMIN", "SYSTEM_ADMIN"].includes(r))) {
+    startStage = 8;
+  } else if (roles.some((r) => ["CORPORATE_HSE", "PLANT_HEAD"].includes(r))) {
+    startStage = 7;
+  } else if (roles.some((r) => ["OCCUPATIONAL_HEALTH_OFFICER", "INDUSTRIAL_HYGIENIST", "EMERGENCY_RESPONSE_COORDINATOR"].includes(r))) {
+    startStage = 6;
+  } else if (roles.some((r) => ["HSE_MANAGER", "SAFETY_OFFICER"].includes(r))) {
+    startStage = 5;
+  } else if (roles.some((r) => ["CONTRACTOR_COORDINATOR", "CONTRACTOR_WORKMAN", "CONTRACTOR"].includes(r))) {
+    startStage = 4; // Starts from contractor -> next step goes immediately to HSE Manager!
+  } else if (roles.some((r) => ["DEPARTMENT_HEAD", "MAINTENANCE_HEAD", "PERMIT_ISSUER", "TRAINER", "LD_MANAGER", "ENVIRONMENT_MANAGER"].includes(r))) {
+    startStage = 3;
+  } else if (roles.some((r) => ["SUPERVISOR"].includes(r))) {
+    startStage = 2;
+  } else {
+    startStage = 1; // Worker / Plant operator
+  }
+
+  const nextStageIndex = Math.min(startStage + 1, 8);
+  const nextStageDef = OBSERVATION_WORKFLOW_STAGES[nextStageIndex - 1];
+
+  const stages = OBSERVATION_WORKFLOW_STAGES.map((s) => {
+    if (s.stage < nextStageIndex) {
+      return {
+        ...s,
+        status: "COMPLETED",
+        actor: `${user.firstName} ${user.lastName}`,
+        actorEmail: user.email,
+        timestamp: new Date().toISOString(),
+        comments: s.stage === startStage ? (description || "Reported hazard") : `Auto-cleared by ${user.roles?.[0] || "Reporter"}`,
+        photoUrl: s.stage === startStage ? photoUrl : null,
+      };
+    } else {
+      return {
+        ...s,
+        status: "PENDING",
+      };
+    }
+  });
+
+  return {
+    startStage,
+    nextStageIndex,
+    currentState: nextStageDef.key,
+    assignedRole: nextStageDef.role,
+    nextStageDef,
+    stages,
+  };
+}
 
 @Injectable()
 export class ObservationsService {
@@ -35,6 +93,7 @@ export class ObservationsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly outbox: OutboxService,
+    private readonly cloudinary: CloudinaryService,
   ) {}
 
   private async getOrCreateObservationWorkflowDefinition(tx: any, organizationId: string) {
@@ -85,7 +144,13 @@ export class ObservationsService {
       const seq = String(refCount + 1).padStart(4, "0");
       const referenceNumber = `OBS-2026-${seq}`;
 
-      const photo = dto.photoData || dto.evidenceKey || (dto.imageUrls && dto.imageUrls[0]) || null;
+      // Process and validate photo upload to Cloudinary (strictly .jpg & .png)
+      let photo = dto.photoData || dto.evidenceKey || (dto.imageUrls && dto.imageUrls[0]) || null;
+      if (photo && (photo.startsWith("data:image/") || photo.startsWith("/9j/") || photo.startsWith("iVBORw0KGgo"))) {
+        const uploadRes = await this.cloudinary.uploadImage(photo, "kenzo-ehs/observations");
+        photo = uploadRes.url;
+      }
+
       const obsType = dto.observationType || dto.type || ObservationType.UNSAFE_CONDITION;
       const severity = dto.severity || IncidentSeverity.MEDIUM;
       const location = dto.location || dto.locationDetails || null;
@@ -110,72 +175,11 @@ export class ObservationsService {
       });
 
       const def = await this.getOrCreateObservationWorkflowDefinition(tx, user.organizationId);
+      const initWf = determineInitialWorkflow(user, dto.description, photo);
 
       const workflowContext = {
-        currentStageIndex: 2,
-        stages: [
-          {
-            stage: 1,
-            key: "WORKER_REPORTED",
-            name: "Worker Spots Issue",
-            role: "WORKER",
-            actor: `${user.firstName} ${user.lastName}`,
-            actorEmail: user.email,
-            status: "COMPLETED",
-            timestamp: new Date().toISOString(),
-            comments: dto.description,
-            photoUrl: photo,
-          },
-          {
-            stage: 2,
-            key: "PENDING_WORKER_HEAD",
-            name: "Worker Head Verification",
-            role: "SUPERVISOR",
-            status: "PENDING",
-          },
-          {
-            stage: 3,
-            key: "PENDING_DEPT_HEAD",
-            name: "Department Head Review",
-            role: "DEPARTMENT_HEAD",
-            status: "PENDING",
-          },
-          {
-            stage: 4,
-            key: "PENDING_CONTRACTOR",
-            name: "Contractor Assessment",
-            role: "CONTRACTOR_COORDINATOR",
-            status: "PENDING",
-          },
-          {
-            stage: 5,
-            key: "PENDING_HSE_MANAGER",
-            name: "HSE Manager Verification",
-            role: "HSE_MANAGER",
-            status: "PENDING",
-          },
-          {
-            stage: 6,
-            key: "PENDING_HEALTH_INSPECTOR",
-            name: "Health Inspector Clearance",
-            role: "OCCUPATIONAL_HEALTH_OFFICER",
-            status: "PENDING",
-          },
-          {
-            stage: 7,
-            key: "PENDING_SUB_ADMIN",
-            name: "Sub Admin Pre-Approval",
-            role: "CORPORATE_HSE",
-            status: "PENDING",
-          },
-          {
-            stage: 8,
-            key: "PENDING_ADMIN_APPROVAL",
-            name: "Admin Resource Allocation & Approval",
-            role: "ADMIN",
-            status: "PENDING",
-          },
-        ],
+        currentStageIndex: initWf.nextStageIndex,
+        stages: initWf.stages,
       };
 
       const wfInstance = await tx.workflowInstance.create({
@@ -184,7 +188,7 @@ export class ObservationsService {
           workflowDefinitionId: def.id,
           entityType: "SafetyObservation",
           entityId: obs.id,
-          currentState: "PENDING_WORKER_HEAD",
+          currentState: initWf.currentState,
           status: WorkflowStatus.IN_PROGRESS,
           initiatedById: user.id,
           contextData: workflowContext,
@@ -194,15 +198,50 @@ export class ObservationsService {
       await tx.workflowAction.create({
         data: {
           workflowInstanceId: wfInstance.id,
-          action: "WORKER_SUBMITTED",
+          action: "REPORTER_SUBMITTED",
           fromState: "DRAFT",
-          toState: "PENDING_WORKER_HEAD",
+          toState: initWf.currentState,
           actorId: user.id,
-          actorRoleCode: "WORKER",
+          actorRoleCode: user.roles?.[0] || "WORKER",
           comments: dto.description,
-          payload: { photoPresent: !!photo },
+          payload: { photoPresent: !!photo, photoUrl: photo, startStage: initWf.startStage },
         },
       });
+
+      // 1. Create WorkflowTask in the Inbox for the target senior role
+      await tx.workflowTask.create({
+        data: {
+          workflowInstanceId: wfInstance.id,
+          stepKey: initWf.nextStageDef.key,
+          assignedRoleCode: initWf.nextStageDef.role,
+          status: WorkflowTaskStatus.PENDING,
+          dueAt: new Date(Date.now() + 24 * 3600000), // 24hr SLA
+        },
+      });
+
+      // 2. Dispatch immediate in-app notifications to one-step senior users
+      const seniorUsers = await tx.userRole.findMany({
+        where: {
+          organizationId: user.organizationId,
+          role: { code: initWf.nextStageDef.role },
+        },
+        include: { user: true },
+      });
+
+      for (const ur of seniorUsers) {
+        await tx.notification.create({
+          data: {
+            userId: ur.userId,
+            title: `Safety Hazard Alert: ${referenceNumber}`,
+            message: `${user.firstName} ${user.lastName} (${user.roles?.[0] || "Staff"}) reported a hazard (${obsType}). Review required by ${initWf.nextStageDef.title}.`,
+            priority: NotificationPriority.HIGH,
+            channel: NotificationChannel.IN_APP,
+            linkUrl: `/observations?id=${obs.id}`,
+            entityType: "SafetyObservation",
+            entityId: obs.id,
+          },
+        });
+      }
 
       await this.audit.log({
         organizationId: user.organizationId,
@@ -212,7 +251,7 @@ export class ObservationsService {
         entityType: "SafetyObservation",
         entityId: obs.id,
         afterState: { status: obs.status, referenceNumber: obs.referenceNumber },
-        reason: "Observation reported by worker",
+        reason: `Observation reported by ${user.roles?.[0] || "user"}, forwarded to ${initWf.nextStageDef.role}`,
         tx,
       });
 
@@ -225,7 +264,7 @@ export class ObservationsService {
         tx,
       });
 
-      this.logger.log(`Created observation ${referenceNumber} and initiated 8-stage workflow`);
+      this.logger.log(`Created observation ${referenceNumber} and routed to ${initWf.nextStageDef.role}`);
       return { ...obs, workflow: wfInstance };
     }, TX_CONFIG);
   }
@@ -355,7 +394,7 @@ export class ObservationsService {
       let completedStageIdx = -1;
       let nextStageIdx = rawContext.currentStageIndex || 2;
       let actionName = dto.action;
-      let actorRole = "OPERATOR";
+      let actorRole = user.roles?.[0] || "OPERATOR";
 
       switch (dto.action) {
         case "PASS_TO_DEPT_HEAD":
@@ -441,7 +480,6 @@ export class ObservationsService {
         updatedContext.scheduledSlot = dto.scheduledSlot || "Immediate Priority";
         updatedContext.allocatedFunds = dto.allocatedFunds || "₹10,000";
 
-        // Update observation status to ACTION_REQUIRED / REVIEWED
         await tx.safetyObservation.update({
           where: { id: obs.id },
           data: {
@@ -487,6 +525,55 @@ export class ObservationsService {
           contextData: updatedContext,
         },
       });
+
+      // 1. Mark existing pending task as completed / approved
+      await tx.workflowTask.updateMany({
+        where: {
+          workflowInstanceId: wfInstance.id,
+          status: WorkflowTaskStatus.PENDING,
+        },
+        data: {
+          status: WorkflowTaskStatus.APPROVED,
+          completedAt: new Date(),
+        },
+      });
+
+      // 2. If workflow is advancing to next stage (stage 2 to 8), create new task and dispatch notification to one-step senior
+      if (nextStageIdx <= 8) {
+        const nextDef = OBSERVATION_WORKFLOW_STAGES[nextStageIdx - 1];
+        await tx.workflowTask.create({
+          data: {
+            workflowInstanceId: wfInstance.id,
+            stepKey: nextDef.key,
+            assignedRoleCode: nextDef.role,
+            status: WorkflowTaskStatus.PENDING,
+            dueAt: new Date(Date.now() + 24 * 3600000),
+          },
+        });
+
+        const nextSeniors = await tx.userRole.findMany({
+          where: {
+            organizationId: user.organizationId,
+            role: { code: nextDef.role },
+          },
+          include: { user: true },
+        });
+
+        for (const ur of nextSeniors) {
+          await tx.notification.create({
+            data: {
+              userId: ur.userId,
+              title: `Observation Escalated: ${obs.referenceNumber}`,
+              message: `${user.firstName} ${user.lastName} forwarded ${obs.referenceNumber} for your review (${nextDef.title}).`,
+              priority: NotificationPriority.HIGH,
+              channel: NotificationChannel.IN_APP,
+              linkUrl: `/observations?id=${obs.id}`,
+              entityType: "SafetyObservation",
+              entityId: obs.id,
+            },
+          });
+        }
+      }
 
       await tx.workflowAction.create({
         data: {

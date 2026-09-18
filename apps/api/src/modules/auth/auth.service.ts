@@ -329,6 +329,16 @@ export class AuthService {
     const permissionCodesSet = new Set<string>();
     const roleScopes: UserRoleScope[] = [];
 
+    // 1. Universal Access: Every enterprise employee and contractor has rights to report & view Safety Observations
+    permissionCodesSet.add("OBSERVATION.READ");
+    permissionCodesSet.add("OBSERVATION.CREATE");
+    permissionCodesSet.add("INCIDENT.READ");
+    permissionCodesSet.add("INCIDENT.CREATE");
+    permissionCodesSet.add("PTW.READ");
+    permissionCodesSet.add("TRAINING.READ");
+    permissionCodesSet.add("REPORTS.READ");
+
+    // 2. Add permissions from database RolePermission records
     for (const ur of userRoles) {
       const scope = (ur.scopeOverride || ur.role.scopeLevel) as AccessScope;
       roleScopes.push({
@@ -338,9 +348,71 @@ export class AuthService {
         departmentId: ur.departmentId,
       });
 
-      for (const rp of ur.role.rolePermissions) {
-        permissionCodesSet.add(rp.permission.code);
+      if (ur.role.rolePermissions) {
+        for (const rp of ur.role.rolePermissions) {
+          if (rp.permission && rp.permission.code) {
+            permissionCodesSet.add(rp.permission.code);
+          }
+        }
       }
+    }
+
+    // 3. Role-based fallback coverage for review & administrative duties
+    const isSuperRole = roleCodes.some((r) =>
+      ["ADMIN", "SYSTEM_ADMIN", "CORPORATE_HSE", "PLANT_HEAD"].includes(r),
+    );
+    const isSafetyLead = roleCodes.some((r) =>
+      ["HSE_MANAGER", "SAFETY_OFFICER", "ENVIRONMENT_MANAGER", "OCCUPATIONAL_HEALTH_OFFICER"].includes(r),
+    );
+    const isSupervisorOrHead = roleCodes.some((r) =>
+      ["SUPERVISOR", "DEPARTMENT_HEAD", "MAINTENANCE_HEAD", "CONTRACTOR_COORDINATOR"].includes(r),
+    );
+
+    if (isSuperRole || isSafetyLead || isSupervisorOrHead) {
+      permissionCodesSet.add("OBSERVATION.REVIEW");
+      permissionCodesSet.add("OBSERVATION.CLOSE");
+      permissionCodesSet.add("ACTION.CREATE");
+      permissionCodesSet.add("ACTION.READ");
+      permissionCodesSet.add("ACTION.UPDATE");
+      permissionCodesSet.add("ACTION.VERIFY");
+      permissionCodesSet.add("ACTION.CLOSE");
+      permissionCodesSet.add("HIRA.READ");
+      permissionCodesSet.add("CAPA.READ");
+      permissionCodesSet.add("INSPECTION.READ");
+    }
+
+    if (isSuperRole || isSafetyLead) {
+      permissionCodesSet.add("HIRA.CREATE");
+      permissionCodesSet.add("HIRA.REVIEW");
+      permissionCodesSet.add("HIRA.APPROVE");
+      permissionCodesSet.add("CAPA.CREATE");
+      permissionCodesSet.add("CAPA.ASSIGN");
+      permissionCodesSet.add("CAPA.CLOSE");
+      permissionCodesSet.add("INSPECTION.CREATE");
+      permissionCodesSet.add("INSPECTION.REVIEW");
+      permissionCodesSet.add("AUDIT.READ");
+      permissionCodesSet.add("AUDIT.PERFORM");
+      permissionCodesSet.add("HEALTH.READ");
+      permissionCodesSet.add("HEALTH.MANAGE");
+      permissionCodesSet.add("CONTRACTOR.READ");
+      permissionCodesSet.add("CONTRACTOR.MANAGE");
+      permissionCodesSet.add("ENVIRONMENT.READ");
+      permissionCodesSet.add("ENVIRONMENT.MANAGE");
+      permissionCodesSet.add("EMERGENCY.READ");
+      permissionCodesSet.add("EMERGENCY.MANAGE");
+      permissionCodesSet.add("COMPLIANCE.READ");
+      permissionCodesSet.add("COMPLIANCE.MANAGE");
+      permissionCodesSet.add("AUDIT_LOG.READ");
+    }
+
+    if (isSuperRole) {
+      permissionCodesSet.add("USER.READ");
+      permissionCodesSet.add("USER.CREATE");
+      permissionCodesSet.add("USER.UPDATE");
+      permissionCodesSet.add("ROLE.ASSIGN");
+      permissionCodesSet.add("ORGANIZATION.MANAGE");
+      permissionCodesSet.add("PLANT.MANAGE");
+      permissionCodesSet.add("DEPARTMENT.MANAGE");
     }
 
     return {

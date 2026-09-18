@@ -112,7 +112,7 @@ export default function InboxPage() {
 
       {/* Tabs */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="flex border-b border-slate-200 px-4 pt-2 gap-2 bg-slate-50/50">
+        <div className="flex border-b border-slate-200 px-4 pt-2 gap-2 bg-slate-50/50 overflow-x-auto scrollbar-none whitespace-nowrap">
           <button
             onClick={() => setActiveTab("myTasks")}
             className={`px-4 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition ${

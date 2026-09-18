@@ -81,6 +81,13 @@ export default function ObservationsPage() {
   const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const validTypes = ["image/jpeg", "image/png", "image/jpg"];
+      const ext = file.name.split(".").pop()?.toLowerCase() || "";
+      if (!validTypes.includes(file.type) && !["jpg", "jpeg", "png"].includes(ext)) {
+        alert("Invalid file format! ONLY JPG and PNG image formats are supported.");
+        e.target.value = "";
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64 = reader.result as string;
@@ -445,13 +452,13 @@ export default function ObservationsPage() {
                         <p className="text-xs font-semibold text-slate-700">
                           Click to snap photo or upload image
                         </p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                          Supports PNG, JPG, camera capture
+                        <p className="text-[11px] text-emerald-600 font-medium mt-0.5">
+                          Cloudinary Integration: strictly JPG & PNG only
                         </p>
                       </div>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept=".jpg,.jpeg,.png,image/jpeg,image/png"
                         capture="environment"
                         onChange={handlePhotoCapture}
                         className="hidden"
@@ -543,7 +550,7 @@ export default function ObservationsPage() {
                     className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold disabled:opacity-50 flex items-center gap-2 shadow-sm"
                   >
                     {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                    Submit & Route to Worker Head
+                    Submit & Route to Senior Reviewer
                   </button>
                 </div>
               </form>
@@ -553,8 +560,8 @@ export default function ObservationsPage() {
 
         {selectedObs && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-end z-50">
-            <div className="bg-white w-full max-w-2xl h-full shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
-              <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+            <div className="bg-white w-full sm:w-11/12 md:max-w-2xl h-full shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
+              <div className="px-4 sm:px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs font-bold bg-sky-100 text-sky-800 px-2 py-0.5 rounded">

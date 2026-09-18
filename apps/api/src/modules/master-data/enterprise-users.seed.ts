@@ -1,4 +1,4 @@
-﻿import { PrismaClient, RoleScopeLevel, UserStatus } from "@prisma/client";
+import { PrismaClient, RoleScopeLevel, UserStatus } from "@prisma/client";
 import * as bcrypt from "bcrypt";
 import { UserRoleType } from "@kenzo-ehs/types";
 
@@ -314,6 +314,38 @@ export async function seedAll19EnterpriseUsers(prisma: PrismaClient, orgId?: str
         scopeOverride: item.scopeLevel,
       },
     });
+
+    // Ensure OBSERVATION.READ & OBSERVATION.CREATE are mapped in RolePermission
+    const basePermissions = [
+      { code: "OBSERVATION.READ", module: "OBSERVATIONS", action: "READ", description: "Read Safety Observations" },
+      { code: "OBSERVATION.CREATE", module: "OBSERVATIONS", action: "CREATE", description: "Create Safety Observations" },
+      { code: "OBSERVATION.REVIEW", module: "OBSERVATIONS", action: "REVIEW", description: "Review Safety Observations" },
+      { code: "OBSERVATION.CLOSE", module: "OBSERVATIONS", action: "CLOSE", description: "Close Safety Observations" },
+      { code: "INCIDENT.READ", module: "INCIDENTS", action: "READ", description: "Read Incidents" },
+      { code: "INCIDENT.CREATE", module: "INCIDENTS", action: "CREATE", description: "Create Incidents" },
+    ];
+
+    for (const p of basePermissions) {
+      const permRecord = await prisma.permission.upsert({
+        where: { code: p.code },
+        update: { module: p.module, action: p.action, description: p.description },
+        create: { code: p.code, module: p.module, action: p.action, description: p.description },
+      });
+
+      await prisma.rolePermission.upsert({
+        where: {
+          roleId_permissionId: {
+            roleId: roleRecord.id,
+            permissionId: permRecord.id,
+          },
+        },
+        update: {},
+        create: {
+          roleId: roleRecord.id,
+          permissionId: permRecord.id,
+        },
+      });
+    }
   }
 
   return { success: true, count: ENTERPRISE_USERS.length };

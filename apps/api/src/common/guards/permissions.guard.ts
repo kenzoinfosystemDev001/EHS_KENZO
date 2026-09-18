@@ -27,7 +27,24 @@ export class PermissionsGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user as AuthenticatedUserContext;
 
-    if (!user || !user.permissions) {
+    if (!user) {
+      throw new ForbiddenException("Access denied: User authentication missing");
+    }
+
+    // Superusers have access across all endpoints
+    if (user.roles?.some((r) => ["SYSTEM_ADMIN", "ADMIN"].includes(r))) {
+      return true;
+    }
+
+    // Universal hazard reporting: All enterprise roles can read and create safety observations
+    const isOnlyObservationAccess = requiredPermissions.every((p) =>
+      p === "OBSERVATION.READ" || p === "OBSERVATION.CREATE"
+    );
+    if (isOnlyObservationAccess) {
+      return true;
+    }
+
+    if (!user.permissions) {
       throw new ForbiddenException("Access denied: User permissions missing");
     }
 

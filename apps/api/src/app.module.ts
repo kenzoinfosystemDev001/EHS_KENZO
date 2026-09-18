@@ -30,6 +30,7 @@ import { EnvironmentModule } from "./modules/environment/environment.module";
 import { EmergencyModule } from "./modules/emergency/emergency.module";
 import { ComplianceModule } from "./modules/compliance/compliance.module";
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
+import { MediaModule } from "./modules/media/media.module";
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { AnalyticsModule } from "./modules/analytics/analytics.module";
     EmergencyModule,
     ComplianceModule,
     AnalyticsModule,
+    MediaModule,
   ],
 })
 export class AppModule implements NestModule {

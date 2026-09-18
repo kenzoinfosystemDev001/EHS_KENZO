@@ -99,7 +99,7 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-8">
             <KpiCard
               label="HIRA Studies"
               value={stats.hira?.total ?? stats.pendingHira ?? 0}
@@ -153,7 +153,7 @@ export default function DashboardPage() {
                 recentList.map((log) => (
                   <div
                     key={log.id}
-                    className="px-5 py-3 flex items-center justify-between text-xs"
+                    className="px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs"
                   >
                     <div>
                       <span className="font-semibold text-slate-800 font-mono">
