@@ -18,6 +18,15 @@ interface WorkflowTask {
     entityId: string;
     currentState: string;
   };
+  entityDetails?: {
+    referenceNumber?: string;
+    studyNumber?: string;
+    title?: string;
+    description?: string;
+    observationType?: string;
+    severity?: string;
+    locationDetails?: string;
+  };
 }
 
 interface InboxSummary {
@@ -63,6 +72,41 @@ export default function InboxPage() {
   }, []);
 
   const tasksToDisplay = summary?.sections?.[activeTab] || [];
+
+  const getActionLink = (task: WorkflowTask) => {
+    switch (task.workflowInstance.entityType) {
+      case "SafetyObservation":
+        return `/observations?id=${task.workflowInstance.entityId}`;
+      case "Incident":
+        return `/incidents/${task.workflowInstance.entityId}`;
+      case "Capa":
+        return `/capa/${task.workflowInstance.entityId}`;
+      case "HiraStudy":
+      default:
+        return `/hira/${task.workflowInstance.entityId}`;
+    }
+  };
+
+  const formatStepName = (stepKey: string) => {
+    switch (stepKey) {
+      case "PENDING_WORKER_HEAD":
+        return "Stage 2: Worker Head Verification";
+      case "PENDING_DEPT_HEAD":
+        return "Stage 3: Dept Head Review";
+      case "PENDING_CONTRACTOR":
+        return "Stage 4: Contractor Assessment";
+      case "PENDING_HSE_MANAGER":
+        return "Stage 5: HSE Manager Verification";
+      case "PENDING_HEALTH_INSPECTOR":
+        return "Stage 6: Health Inspector Clearance";
+      case "PENDING_SUB_ADMIN":
+        return "Stage 7: Sub Admin Pre-Approval";
+      case "PENDING_ADMIN_APPROVAL":
+        return "Stage 8: Admin Resource Scheduling";
+      default:
+        return stepKey.replace(/_/g, " ");
+    }
+  };
 
   return (
     <AppShell>
@@ -197,18 +241,31 @@ export default function InboxPage() {
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
-                        {task.workflowInstance.entityType}
+                        {task.workflowInstance.entityType === "SafetyObservation"
+                          ? "Safety Observation"
+                          : task.workflowInstance.entityType}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-mono text-slate-700">
-                      {task.workflowInstance.entityId.slice(0, 12)}...
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-slate-900">
+                        {task.entityDetails?.referenceNumber ||
+                          task.entityDetails?.studyNumber ||
+                          `${task.workflowInstance.entityId.slice(0, 10)}...`}
+                      </div>
+                      {(task.entityDetails?.description ||
+                        task.entityDetails?.title) && (
+                        <div className="text-[11px] text-slate-500 truncate max-w-xs mt-0.5">
+                          {task.entityDetails.description ||
+                            task.entityDetails.title}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 font-medium text-slate-800">
                       {task.assignedRoleCode || "Direct User Assignment"}
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                        {task.stepKey}
+                        {formatStepName(task.stepKey)}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -218,10 +275,10 @@ export default function InboxPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <a
-                        href={`/hira/${task.workflowInstance.entityId}`}
-                        className="inline-flex items-center px-2.5 py-1 rounded bg-slate-900 text-white font-medium hover:bg-slate-800 transition text-[11px]"
+                        href={getActionLink(task)}
+                        className="inline-flex items-center px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-semibold transition text-xs shadow-xs"
                       >
-                        Execute Action
+                        Review &amp; Approve &rarr;
                       </a>
                     </td>
                   </tr>

@@ -106,6 +106,22 @@ export default function ObservationsPage() {
     fetchData();
   }, []);
 
+  // Auto-open drawer when navigating from unified inbox with ?id=UUID or referenceNumber
+  useEffect(() => {
+    if (typeof window !== "undefined" && data.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get("id");
+      if (targetId) {
+        const found = data.find(
+          (o) => o.id === targetId || o.referenceNumber === targetId,
+        );
+        if (found) {
+          setSelectedObs(found);
+        }
+      }
+    }
+  }, [data]);
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -236,6 +252,55 @@ export default function ObservationsPage() {
   };
 
   const currentIdx = selectedObs ? getCurrentStageIndex(selectedObs) : 0;
+
+  const getActiveButtonText = (stage: number) => {
+    switch (stage) {
+      case 2:
+        return "Verify on Site → Pass to Dept Head";
+      case 3:
+        return "Review Impact → Pass to Contractor";
+      case 4:
+        return "Assess Repairs → Pass to HSE Manager";
+      case 5:
+        return "Verify Safety → Pass to Health Inspector";
+      case 6:
+        return "Clear Health Protocol → Pass to Sub Admin";
+      case 7:
+        return "Pre-Approve Risk → Pass to Admin";
+      case 8:
+        return "Approve, Assign Staff & Slot → Schedule Fixing";
+      default:
+        return "Approve & Advance Stage";
+    }
+  };
+
+  const handleActiveStageAction = async () => {
+    switch (currentIdx) {
+      case 2:
+        await handleEscalate("PASS_TO_DEPT_HEAD");
+        break;
+      case 3:
+        await handleEscalate("PASS_TO_CONTRACTOR");
+        break;
+      case 4:
+        await handleEscalate("PASS_TO_HSE_MANAGER");
+        break;
+      case 5:
+        await handleEscalate("PASS_TO_HEALTH_INSPECTOR");
+        break;
+      case 6:
+        await handleEscalate("PASS_TO_SUB_ADMIN");
+        break;
+      case 7:
+        await handleEscalate("PASS_TO_ADMIN");
+        break;
+      case 8:
+        await handleEscalate("ADMIN_APPROVE_AND_SCHEDULE");
+        break;
+      default:
+        break;
+    }
+  };
 
   return (
     <AppShell>
@@ -432,10 +497,23 @@ export default function ObservationsPage() {
                         <td className="px-5 py-4 text-right">
                           <button
                             onClick={() => setSelectedObs(row)}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 px-3 py-1.5 rounded-lg transition"
+                            className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-lg transition shadow-xs ${
+                              isFullyResolved
+                                ? "text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200"
+                                : "text-white bg-sky-600 hover:bg-sky-700"
+                            }`}
                           >
-                            <Eye className="w-3.5 h-3.5" />
-                            Manage Stage
+                            {isFullyResolved ? (
+                              <>
+                                <Eye className="w-3.5 h-3.5" />
+                                View Details
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Review &amp; Approve (Stage {stageIdx})
+                              </>
+                            )}
                           </button>
                         </td>
                       </tr>
@@ -669,126 +747,30 @@ export default function ObservationsPage() {
                   </div>
                 </div>
 
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3">
-                    Escalation Stepper (8 Sequential Checkpoints)
-                  </h3>
-                  <div className="space-y-3">
-                    {STAGE_DEFINITIONS.map((stage) => {
-                      const isCompleted = currentIdx > stage.stage;
-                      const isCurrent = currentIdx === stage.stage;
-
-                      const contextStages: any[] = selectedObs.workflow?.contextData?.stages || [];
-                      const stageLog = contextStages.find((s) => s.stage === stage.stage);
-
-                      return (
-                        <div
-                          key={stage.stage}
-                          className={`p-3.5 rounded-xl border transition ${
-                            isCompleted
-                              ? "bg-emerald-50/70 border-emerald-200"
-                              : isCurrent
-                              ? "bg-sky-50 border-sky-300 ring-2 ring-sky-200"
-                              : "bg-slate-50 border-slate-200 opacity-60"
-                          }`}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start gap-3">
-                              <div
-                                className={`w-7 h-7 rounded-full flex items-center justify-center mt-0.5 text-xs font-bold ${
-                                  isCompleted
-                                    ? "bg-emerald-600 text-white"
-                                    : isCurrent
-                                    ? "bg-sky-600 text-white animate-pulse"
-                                    : "bg-slate-300 text-slate-600"
-                                }`}
-                              >
-                                {isCompleted ? (
-                                  <CheckCircle2 className="w-4 h-4" />
-                                ) : (
-                                  stage.stage
-                                )}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-semibold text-xs text-slate-800">
-                                    Stage {stage.stage}: {stage.name}
-                                  </span>
-                                  <span className="text-[10px] px-2 py-0.5 rounded bg-slate-200/80 font-medium text-slate-700">
-                                    {stage.title}
-                                  </span>
-                                </div>
-
-                                {stageLog?.completedBy && (
-                                  <div className="text-[11px] text-emerald-800 font-medium mt-1">
-                                    ✓ Verified by {stageLog.completedBy} ({stageLog.role}) &bull;{" "}
-                                    <span className="text-[10px] text-slate-500">
-                                      {new Date(stageLog.timestamp).toLocaleTimeString([], {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })}
-                                    </span>
-                                  </div>
-                                )}
-
-                                {stageLog?.comments && (
-                                  <div className="text-xs text-slate-600 mt-1 italic bg-white/70 px-2 py-1 rounded border border-slate-200/60">
-                                    &ldquo;{stageLog.comments}&rdquo;
-                                  </div>
-                                )}
-
-                                {stage.stage === 8 && (stageLog?.assignedStaff || selectedObs.workflow?.contextData?.assignedStaff) && (
-                                  <div className="mt-2 p-2 bg-emerald-100/70 border border-emerald-300 rounded-lg text-xs space-y-1">
-                                    <div className="font-bold text-emerald-900">
-                                      🛠️ Admin Scheduling Details:
-                                    </div>
-                                    <div>
-                                      <strong>Assigned Staff:</strong> {stageLog?.assignedStaff || selectedObs.workflow?.contextData?.assignedStaff}
-                                    </div>
-                                    <div>
-                                      <strong>Decided Slot:</strong> {stageLog?.scheduledSlot || selectedObs.workflow?.contextData?.scheduledSlot}
-                                    </div>
-                                    <div>
-                                      <strong>Repair Funds:</strong> {stageLog?.allocatedFunds || selectedObs.workflow?.contextData?.allocatedFunds}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
-                                isCompleted
-                                  ? "bg-emerald-100 text-emerald-800"
-                                  : isCurrent
-                                  ? "bg-sky-100 text-sky-800"
-                                  : "bg-slate-200 text-slate-600"
-                              }`}
-                            >
-                              {isCompleted ? "Passed" : isCurrent ? "Active Step" : "Queued"}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
+                {/* 1. Dedicated Action & Approval Card (Prominently displayed at the top) */}
                 {currentIdx < 9 ? (
-                  <div className="p-4 rounded-xl border border-sky-200 bg-sky-50/50 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-sky-500 animate-ping" />
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-sky-900">
-                        Pending Action for Stage {currentIdx}: {STAGE_DEFINITIONS[currentIdx - 1]?.name}
-                      </h4>
+                  <div className="p-4 rounded-xl border-2 border-sky-300 bg-sky-50/70 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-3 w-3 relative">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-sky-600"></span>
+                        </span>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-sky-950">
+                          Pending Action: Stage {currentIdx} - {STAGE_DEFINITIONS[currentIdx - 1]?.name}
+                        </h4>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-200 text-sky-900 uppercase tracking-wide">
+                        Assigned Role: {STAGE_DEFINITIONS[currentIdx - 1]?.title}
+                      </span>
                     </div>
 
                     <p className="text-xs text-slate-600">
-                      Forwarding this observation to the next operational stakeholder in the hierarchy:
+                      As the designated reviewer, verify the hazard conditions and approve to advance this observation along the hierarchy.
                     </p>
 
                     {currentIdx === 8 ? (
-                      <div className="space-y-3 bg-white p-3 rounded-lg border border-sky-200">
+                      <div className="space-y-3 bg-white p-3.5 rounded-lg border border-sky-200">
                         <div className="text-xs font-bold text-slate-800">
                           Final Admin Authorization & Resource Allocation
                         </div>
@@ -857,7 +839,7 @@ export default function ObservationsPage() {
                         </button>
                       </div>
                     ) : (
-                      <div className="space-y-3 bg-white p-3 rounded-lg border border-sky-200">
+                      <div className="space-y-3 bg-white p-3.5 rounded-lg border border-sky-200">
                         <div>
                           <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                             Verification Remarks / Notes
@@ -877,10 +859,10 @@ export default function ObservationsPage() {
                               type="button"
                               disabled={escalating}
                               onClick={() => handleEscalate("PASS_TO_DEPT_HEAD")}
-                              className="flex-1 py-2 px-3 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5"
+                              className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition"
                             >
-                              {escalating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                              Verify on Site &rarr; Pass to Dept Head
+                              {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
+                              ✓ Verify on Site &rarr; Pass to Dept Head
                             </button>
                           )}
 
@@ -889,10 +871,10 @@ export default function ObservationsPage() {
                               type="button"
                               disabled={escalating}
                               onClick={() => handleEscalate("PASS_TO_CONTRACTOR")}
-                              className="flex-1 py-2 px-3 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5"
+                              className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition"
                             >
-                              {escalating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                              Review Impact &rarr; Pass to Contractor
+                              {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
+                              ✓ Review Impact &rarr; Pass to Contractor
                             </button>
                           )}
 
@@ -901,10 +883,10 @@ export default function ObservationsPage() {
                               type="button"
                               disabled={escalating}
                               onClick={() => handleEscalate("PASS_TO_HSE_MANAGER")}
-                              className="flex-1 py-2 px-3 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5"
+                              className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition"
                             >
-                              {escalating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                              Assess Repairs &rarr; Pass to HSE Manager
+                              {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
+                              ✓ Assess Repairs &rarr; Pass to HSE Manager
                             </button>
                           )}
 
@@ -913,10 +895,10 @@ export default function ObservationsPage() {
                               type="button"
                               disabled={escalating}
                               onClick={() => handleEscalate("PASS_TO_HEALTH_INSPECTOR")}
-                              className="flex-1 py-2 px-3 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5"
+                              className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition"
                             >
-                              {escalating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                              Verify Safety &rarr; Pass to Health Inspector
+                              {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
+                              ✓ Verify Safety &rarr; Pass to Health Inspector
                             </button>
                           )}
 
@@ -925,10 +907,10 @@ export default function ObservationsPage() {
                               type="button"
                               disabled={escalating}
                               onClick={() => handleEscalate("PASS_TO_SUB_ADMIN")}
-                              className="flex-1 py-2 px-3 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5"
+                              className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition"
                             >
-                              {escalating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                              Clear Health & Hygiene &rarr; Pass to Sub Admin
+                              {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
+                              ✓ Clear Health Protocol &rarr; Pass to Sub Admin
                             </button>
                           )}
 
@@ -937,10 +919,10 @@ export default function ObservationsPage() {
                               type="button"
                               disabled={escalating}
                               onClick={() => handleEscalate("PASS_TO_ADMIN")}
-                              className="flex-1 py-2 px-3 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5"
+                              className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition"
                             >
-                              {escalating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                              Pre-Approve Risk &rarr; Pass to Admin
+                              {escalating && <Loader2 className="w-4 h-4 animate-spin" />}
+                              ✓ Pre-Approve Risk &rarr; Pass to Admin
                             </button>
                           )}
                         </div>
@@ -960,15 +942,161 @@ export default function ObservationsPage() {
                     </p>
                   </div>
                 )}
+
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3">
+                    Escalation Stepper (8 Sequential Checkpoints)
+                  </h3>
+                  <div className="space-y-3">
+                    {STAGE_DEFINITIONS.map((stage) => {
+                      const isCompleted = currentIdx > stage.stage;
+                      const isCurrent = currentIdx === stage.stage;
+
+                      const contextStages: any[] = selectedObs.workflow?.contextData?.stages || [];
+                      const stageLog = contextStages.find((s) => s.stage === stage.stage);
+
+                      return (
+                        <div
+                          key={stage.stage}
+                          className={`p-3.5 rounded-xl border transition ${
+                            isCompleted
+                              ? "bg-emerald-50/70 border-emerald-200"
+                              : isCurrent
+                              ? "bg-sky-50 border-sky-300 ring-2 ring-sky-200"
+                              : "bg-slate-50 border-slate-200 opacity-60"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start gap-3 flex-1">
+                              <div
+                                className={`w-7 h-7 rounded-full flex items-center justify-center mt-0.5 text-xs font-bold ${
+                                  isCompleted
+                                    ? "bg-emerald-600 text-white"
+                                    : isCurrent
+                                    ? "bg-sky-600 text-white animate-pulse"
+                                    : "bg-slate-300 text-slate-600"
+                                }`}
+                              >
+                                {isCompleted ? (
+                                  <CheckCircle2 className="w-4 h-4" />
+                                ) : (
+                                  stage.stage
+                                )}
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-xs text-slate-800">
+                                    Stage {stage.stage}: {stage.name}
+                                  </span>
+                                  <span className="text-[10px] px-2 py-0.5 rounded bg-slate-200/80 font-medium text-slate-700">
+                                    {stage.title}
+                                  </span>
+                                </div>
+
+                                {stageLog?.completedBy && (
+                                  <div className="text-[11px] text-emerald-800 font-medium mt-1">
+                                    ✓ Verified by {stageLog.completedBy} ({stageLog.role}) &bull;{" "}
+                                    <span className="text-[10px] text-slate-500">
+                                      {new Date(stageLog.timestamp).toLocaleTimeString([], {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {stageLog?.comments && (
+                                  <div className="text-xs text-slate-600 mt-1 italic bg-white/70 px-2 py-1 rounded border border-slate-200/60">
+                                    &ldquo;{stageLog.comments}&rdquo;
+                                  </div>
+                                )}
+
+                                {stage.stage === 8 && (stageLog?.assignedStaff || selectedObs.workflow?.contextData?.assignedStaff) && (
+                                  <div className="mt-2 p-2 bg-emerald-100/70 border border-emerald-300 rounded-lg text-xs space-y-1">
+                                    <div className="font-bold text-emerald-900">
+                                      🛠️ Admin Scheduling Details:
+                                    </div>
+                                    <div>
+                                      <strong>Assigned Staff:</strong> {stageLog?.assignedStaff || selectedObs.workflow?.contextData?.assignedStaff}
+                                    </div>
+                                    <div>
+                                      <strong>Decided Slot:</strong> {stageLog?.scheduledSlot || selectedObs.workflow?.contextData?.scheduledSlot}
+                                    </div>
+                                    <div>
+                                      <strong>Repair Funds:</strong> {stageLog?.allocatedFunds || selectedObs.workflow?.contextData?.allocatedFunds}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {isCurrent && currentIdx < 9 && (
+                                  <div className="mt-2.5 pt-2 border-t border-sky-200 flex items-center justify-between gap-2">
+                                    <span className="text-[11px] font-semibold text-sky-800">
+                                      ⚡ Awaiting verification by {stage.title}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      disabled={escalating}
+                                      onClick={() => handleActiveStageAction()}
+                                      className="px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded text-[11px] font-bold shadow-xs transition flex items-center gap-1 disabled:opacity-50"
+                                    >
+                                      {escalating && <Loader2 className="w-3 h-3 animate-spin" />}
+                                      Approve Step &rarr;
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ml-2 ${
+                                isCompleted
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : isCurrent
+                                  ? "bg-sky-100 text-sky-800"
+                                  : "bg-slate-200 text-slate-600"
+                              }`}
+                            >
+                              {isCompleted ? "Passed" : isCurrent ? "Active Step" : "Queued"}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
-              <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex justify-end">
-                <button
-                  onClick={() => setSelectedObs(null)}
-                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg"
-                >
-                  Close Drawer
-                </button>
+              <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+                <div className="text-xs text-slate-600 truncate">
+                  {currentIdx < 9 ? (
+                    <span className="font-semibold text-slate-800">
+                      Active: <span className="text-sky-700 font-bold">Stage {currentIdx} ({STAGE_DEFINITIONS[currentIdx - 1]?.title})</span>
+                    </span>
+                  ) : (
+                    <span className="font-semibold text-emerald-700">
+                      ✓ All 8 Stages Completed &amp; Scheduled
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSelectedObs(null)}
+                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition"
+                  >
+                    Close
+                  </button>
+                  {currentIdx < 9 && (
+                    <button
+                      type="button"
+                      disabled={escalating}
+                      onClick={() => handleActiveStageAction()}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm transition flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      {escalating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      ✓ {getActiveButtonText(currentIdx)}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
