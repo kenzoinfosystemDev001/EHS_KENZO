@@ -39,9 +39,16 @@ export class AuthService {
     expiresIn: number;
     user: AuthenticatedUserContext;
   }> {
-    // Look up user by email
+    // Look up user by email with support for email aliases
+    const rawEmail = dto.email.toLowerCase().trim();
+    const EMAIL_ALIASES: Record<string, string> = {
+      "contractor.coordinator@kenzo-ehs.com": "contractor.coord@kenzo-ehs.com",
+      "environment.manager@kenzo-ehs.com": "environment.mgr@kenzo-ehs.com",
+    };
+    const lookupEmail = EMAIL_ALIASES[rawEmail] || rawEmail;
+
     const user = await this.prisma.user.findUnique({
-      where: { email: dto.email.toLowerCase().trim() },
+      where: { email: lookupEmail },
       include: {
         organization: true,
         userRoles: {
