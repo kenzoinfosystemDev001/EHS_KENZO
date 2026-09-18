@@ -164,6 +164,9 @@ export class AuthService {
     refreshToken: string;
     expiresIn: number;
   }> {
+    if (!dto.refreshToken) {
+      throw new UnauthorizedException("Refresh token is required");
+    }
     const incomingTokenHash = this.hashToken(dto.refreshToken);
 
     const session = await this.prisma.session.findUnique({

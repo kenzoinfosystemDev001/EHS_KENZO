@@ -8,6 +8,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  UnauthorizedException,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -76,7 +77,14 @@ export class AuthController {
       (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress;
     const userAgent = req.headers["user-agent"];
 
-    const result = await this.authService.refresh(dto, ip, userAgent);
+    const token =
+      dto.refreshToken?.trim() || (req.cookies?.["kenzo_refresh_token"] as string);
+
+    if (!token) {
+      throw new UnauthorizedException("Refresh token is required");
+    }
+
+    const result = await this.authService.refresh({ refreshToken: token }, ip, userAgent);
 
     const isProd = process.env.NODE_ENV === "production";
     res.cookie("kenzo_refresh_token", result.refreshToken, {

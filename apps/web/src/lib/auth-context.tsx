@@ -39,6 +39,19 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const ACCESS_TOKEN_KEY = "kenzo_access_token";
+const REFRESH_TOKEN_KEY = "kenzo_refresh_token";
+const USER_KEY = "kenzo_user_profile";
+
+function setClientSessionCookie(active: boolean) {
+  if (typeof document === "undefined") return;
+  if (active) {
+    document.cookie = "kenzo_session=1; path=/; max-age=604800; SameSite=Lax";
+  } else {
+    document.cookie = "kenzo_session=; path=/; max-age=0; SameSite=Lax";
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -51,23 +64,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshingRef.current = (async () => {
       try {
         const apiBase = getApiBaseUrl();
+        const storedRefreshToken =
+          typeof window !== "undefined"
+            ? localStorage.getItem(REFRESH_TOKEN_KEY) || ""
+            : "";
+
         const res = await fetch(`${apiBase}/auth/refresh`, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken: "" }), // server reads from cookie
+          body: JSON.stringify({ refreshToken: storedRefreshToken }),
         });
         if (res.ok) {
           const data = await res.json();
           if (data.success && data.data.accessToken) {
             const newToken = data.data.accessToken;
             setAccessToken(newToken);
+            if (typeof window !== "undefined") {
+              localStorage.setItem(ACCESS_TOKEN_KEY, newToken);
+              if (data.data.refreshToken) {
+                localStorage.setItem(REFRESH_TOKEN_KEY, data.data.refreshToken);
+              }
+            }
+            setClientSessionCookie(true);
             return newToken;
           }
         }
       } catch {
         // Refresh failed
       }
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+      }
+      setClientSessionCookie(false);
       setUser(null);
       setAccessToken(null);
       return null;
@@ -80,21 +111,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      setIsLoading(true);
+      // 1. Immediately hydrate from localStorage if present
+      if (typeof window !== "undefined") {
+        try {
+          const cachedUser = localStorage.getItem(USER_KEY);
+          const cachedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+          if (cachedUser && cachedToken) {
+            setUser(JSON.parse(cachedUser));
+            setAccessToken(cachedToken);
+            setClientSessionCookie(true);
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      }
+
+      // 2. Validate/refresh session with the backend
       try {
         const apiBase = getApiBaseUrl();
-        // Try to get fresh token via refresh cookie
+        const storedRefreshToken =
+          typeof window !== "undefined"
+            ? localStorage.getItem(REFRESH_TOKEN_KEY) || ""
+            : "";
+
         const res = await fetch(`${apiBase}/auth/refresh`, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken: "" }),
+          body: JSON.stringify({ refreshToken: storedRefreshToken }),
         });
         if (res.ok) {
           const data = await res.json();
           if (data.success && data.data.accessToken) {
             const token = data.data.accessToken;
             setAccessToken(token);
+            if (typeof window !== "undefined") {
+              localStorage.setItem(ACCESS_TOKEN_KEY, token);
+              if (data.data.refreshToken) {
+                localStorage.setItem(REFRESH_TOKEN_KEY, data.data.refreshToken);
+              }
+            }
+            setClientSessionCookie(true);
+
             // Fetch user profile
             const meRes = await fetch(`${apiBase}/auth/me`, {
               credentials: "include",
@@ -102,12 +160,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
             if (meRes.ok) {
               const meData = await meRes.json();
-              if (meData.success) setUser(meData.data);
+              if (meData.success) {
+                setUser(meData.data);
+                if (typeof window !== "undefined") {
+                  localStorage.setItem(USER_KEY, JSON.stringify(meData.data));
+                }
+              }
             }
           }
+        } else if (res.status === 401) {
+          // Explicitly expired or invalid session
+          if (typeof window !== "undefined") {
+            localStorage.removeItem(ACCESS_TOKEN_KEY);
+            localStorage.removeItem(REFRESH_TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
+          }
+          setClientSessionCookie(false);
+          setUser(null);
+          setAccessToken(null);
         }
       } catch {
-        // No active session
+        // Offline or network error - keep cached credentials if available
       } finally {
         setIsLoading(false);
       }
@@ -141,6 +214,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setAccessToken(data.data.accessToken);
     setUser(data.data.user);
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem(ACCESS_TOKEN_KEY, data.data.accessToken);
+      if (data.data.refreshToken) {
+        localStorage.setItem(REFRESH_TOKEN_KEY, data.data.refreshToken);
+      }
+      localStorage.setItem(USER_KEY, JSON.stringify(data.data.user));
+    }
+    setClientSessionCookie(true);
   }, []);
 
   const logout = useCallback(async () => {
@@ -154,6 +236,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
     } finally {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+      }
+      setClientSessionCookie(false);
       setUser(null);
       setAccessToken(null);
     }

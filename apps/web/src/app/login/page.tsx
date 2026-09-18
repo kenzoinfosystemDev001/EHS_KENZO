@@ -16,8 +16,9 @@ function LoginFormContent() {
   // If already authenticated, redirect to dashboard
   useEffect(() => {
     if (!isLoading && user) {
-      const from = searchParams.get("from") || "/dashboard";
-      router.replace(from);
+      const from = searchParams.get("from");
+      const target = !from || from === "/" ? "/dashboard" : from;
+      router.replace(target);
     }
   }, [user, isLoading, router, searchParams]);
 
@@ -27,8 +28,9 @@ function LoginFormContent() {
     setIsSubmitting(true);
     try {
       await login(email, password);
-      const from = searchParams.get("from") || "/dashboard";
-      router.replace(from);
+      const from = searchParams.get("from");
+      const target = !from || from === "/" ? "/dashboard" : from;
+      router.replace(target);
     } catch (err: unknown) {
       setError(
         err instanceof Error
