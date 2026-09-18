@@ -9,10 +9,25 @@ import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
 import { Permissions } from "@kenzo-ehs/types";
 
-@Controller("analytics")
+@Controller(["analytics", "reports"])
 @UseGuards(JwtAuthGuard, PermissionsGuard, ScopeGuard)
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
+
+  @Get()
+  @RequirePermissions(Permissions.REPORTS_READ)
+  getReports(@CurrentUser() user: AuthenticatedUserContext) {
+    return this.analyticsService.getReports(user);
+  }
+
+  @Post()
+  @RequirePermissions(Permissions.REPORTS_READ)
+  logReportManhours(
+    @Body() dto: any,
+    @CurrentUser() user: AuthenticatedUserContext,
+  ) {
+    return this.analyticsService.logManhours(dto, user);
+  }
   @Get("kpis") @RequirePermissions(Permissions.REPORTS_READ) getKpis(
     @CurrentUser() user: AuthenticatedUserContext,
   ) {

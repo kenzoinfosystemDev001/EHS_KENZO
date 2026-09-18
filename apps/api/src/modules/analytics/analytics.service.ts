@@ -77,9 +77,54 @@ export class AnalyticsService {
     return []; // Simplified for this exercise
   }
 
+  async getReports(user: AuthenticatedUserContext) {
+    const records = await this.prisma.plantManhours.findMany({
+      where: { organizationId: user.organizationId },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+
+    if (records.length === 0) {
+      // Provide default template summary if none logged yet
+      return [
+        {
+          id: "rep-default-1",
+          reportType: "Executive EHS Monthly Review",
+          plant: "Corporate / All Plants",
+          department: "HSE Management",
+          dateRange: new Date().toISOString().slice(0, 7),
+          generatedBy: `${user.firstName} ${user.lastName}`,
+          date: new Date().toLocaleDateString(),
+        },
+      ];
+    }
+
+    return records.map((m) => ({
+      id: m.id,
+      reportType: "Monthly Safety & Manhours",
+      plant: m.plantId || "Primary Plant",
+      department: "Operations",
+      dateRange: `${m.year}-${String(m.month).padStart(2, "0")}`,
+      generatedBy: `${user.firstName} ${user.lastName}`,
+      date: m.createdAt
+        ? new Date(m.createdAt).toLocaleDateString()
+        : new Date().toLocaleDateString(),
+    }));
+  }
+
   async logManhours(dto: any, user: AuthenticatedUserContext) {
+    const manhoursValue = parseFloat(dto.manhours || dto.employeeManhours || "0");
+    const date = dto.date ? new Date(dto.date) : new Date();
+
     return this.prisma.plantManhours.create({
-      data: { ...dto, organizationId: user.organizationId },
+      data: {
+        organizationId: user.organizationId,
+        plantId: dto.plant || user.roleScopes[0]?.plantId || undefined,
+        year: date.getFullYear(),
+        month: date.getMonth() + 1,
+        employeeManhours: manhoursValue,
+        contractorManhours: 0,
+      },
     });
   }
 }

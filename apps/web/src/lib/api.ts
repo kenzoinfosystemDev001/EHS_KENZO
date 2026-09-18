@@ -66,10 +66,19 @@ export async function apiClient<T>(
     }
 
     const baseUrl = getApiBaseUrl();
-    return fetch(
-      `${baseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`,
-      { ...options, headers, credentials: "include" },
-    );
+    let path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+    // Strip leading /api/v1 to prevent duplicate /api/v1/api/v1/...
+    if (path.startsWith("/api/v1/")) {
+      path = path.slice(7);
+    } else if (path === "/api/v1") {
+      path = "";
+    }
+
+    return fetch(`${baseUrl}${path}`, {
+      ...options,
+      headers,
+      credentials: "include",
+    });
   };
 
   let res = await doRequest(_accessToken);

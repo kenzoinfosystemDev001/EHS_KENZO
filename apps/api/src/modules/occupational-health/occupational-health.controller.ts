@@ -9,7 +9,7 @@ import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
 import { Permissions } from "@kenzo-ehs/types";
 
-@Controller("health")
+@Controller(["occupational-health", "health-records"])
 @UseGuards(JwtAuthGuard, PermissionsGuard, ScopeGuard)
 export class OccupationalHealthController {
   constructor(private readonly healthService: OccupationalHealthService) {}
