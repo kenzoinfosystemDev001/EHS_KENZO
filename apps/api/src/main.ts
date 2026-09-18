@@ -35,6 +35,7 @@ async function bootstrap() {
     "http://127.0.0.1:4000",
     "http://127.0.0.1:5173",
     "https://ehs-kenzo.vercel.app",
+    "https://ehskenzo.vercel.app",
     "https://ehs-kenzo.onrender.com",
   ];
 
