@@ -18,6 +18,9 @@ import {
   Coins,
   X,
   Eye,
+  Maximize2,
+  ExternalLink,
+  ZoomIn,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 
@@ -112,9 +115,21 @@ export default function ObservationsPage() {
   const [adminStaff, setAdminStaff] = useState("Manoj Patil (Maintenance Head)");
   const [adminSlot, setAdminSlot] = useState("Tomorrow 10:00 AM - 01:00 PM (Shift A)");
   const [adminFunds, setAdminFunds] = useState("₹15,000");
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState<string>("");
 
   useEffect(() => {
     fetchData();
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setPreviewImage(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   // Auto-open drawer when navigating from unified inbox with ?id=UUID or referenceNumber
@@ -445,12 +460,23 @@ export default function ObservationsPage() {
                         </td>
                         <td className="px-4 py-4">
                           {row.evidenceKey ? (
-                            <img
-                              src={row.evidenceKey}
-                              alt="Hazard evidence"
-                              className="w-12 h-12 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-80"
-                              onClick={() => setSelectedObs(row)}
-                            />
+                            <div
+                              className="relative group w-12 h-12 rounded-lg overflow-hidden border border-slate-200 cursor-pointer flex-shrink-0"
+                              onClick={() => {
+                                setPreviewImage(row.evidenceKey);
+                                setPreviewTitle(`${row.referenceNumber || "Observation"} - ${row.observationType?.replace(/_/g, " ")}`);
+                              }}
+                              title="Click to expand photo"
+                            >
+                              <img
+                                src={row.evidenceKey}
+                                alt="Hazard evidence"
+                                className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
+                              />
+                              <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                <Maximize2 className="w-3.5 h-3.5" />
+                              </div>
+                            </div>
                           ) : (
                             <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
                               <Camera className="w-5 h-5" />
@@ -599,8 +625,23 @@ export default function ObservationsPage() {
                       <img
                         src={photoPreview}
                         alt="Captured issue preview"
-                        className="w-full h-48 object-cover"
+                        className="w-full h-48 object-cover cursor-pointer"
+                        onClick={() => {
+                          setPreviewImage(photoPreview);
+                          setPreviewTitle("New Observation Photo Preview");
+                        }}
                       />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewImage(photoPreview);
+                          setPreviewTitle("New Observation Photo Preview");
+                        }}
+                        className="absolute bottom-2 left-2 px-2 py-1 bg-slate-900/80 hover:bg-slate-900 text-white rounded text-[11px] font-medium flex items-center gap-1 backdrop-blur-xs transition"
+                      >
+                        <Maximize2 className="w-3 h-3" />
+                        <span>Expand Preview</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => {
@@ -608,6 +649,7 @@ export default function ObservationsPage() {
                           setFormData((p) => ({ ...p, photoData: "" }));
                         }}
                         className="absolute top-2 right-2 bg-red-600/90 text-white p-1.5 rounded-full hover:bg-red-700 text-xs shadow-md"
+                        title="Remove photo"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -760,13 +802,41 @@ export default function ObservationsPage() {
                 <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
                   <div className="flex gap-4">
                     {selectedObs.evidenceKey ? (
-                      <img
-                        src={selectedObs.evidenceKey}
-                        alt="Evidence"
-                        className="w-24 h-24 object-cover rounded-lg border border-slate-300 shadow-xs"
-                      />
+                      <div
+                        className="relative group flex-shrink-0 cursor-pointer rounded-lg overflow-hidden border border-slate-300 shadow-xs"
+                        onClick={() => {
+                          setPreviewImage(selectedObs.evidenceKey);
+                          setPreviewTitle(`${selectedObs.referenceNumber || "Observation"} - ${selectedObs.observationType?.replace(/_/g, " ")}`);
+                        }}
+                      >
+                        <img
+                          src={selectedObs.evidenceKey}
+                          alt="Hazard Evidence"
+                          className="w-24 h-24 sm:w-28 sm:h-28 object-cover transition duration-200 group-hover:scale-105"
+                        />
+                        {/* Hover Overlay with Zoom Icon */}
+                        <div className="absolute inset-0 bg-slate-900/35 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="p-1.5 bg-white/95 text-slate-900 rounded-full shadow-md">
+                            <ZoomIn className="w-4 h-4" />
+                          </span>
+                        </div>
+                        {/* Always-visible Expand Badge Button in bottom-right corner */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPreviewImage(selectedObs.evidenceKey);
+                            setPreviewTitle(`${selectedObs.referenceNumber || "Observation"} - ${selectedObs.observationType?.replace(/_/g, " ")}`);
+                          }}
+                          className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-slate-900/85 hover:bg-black text-white rounded text-[10px] font-semibold flex items-center gap-1 shadow-xs backdrop-blur-xs transition"
+                          title="Expand photo to full size"
+                        >
+                          <Maximize2 className="w-2.5 h-2.5" />
+                          <span>Expand</span>
+                        </button>
+                      </div>
                     ) : (
-                      <div className="w-24 h-24 rounded-lg bg-slate-200 flex flex-col items-center justify-center text-slate-400">
+                      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-lg bg-slate-200 flex flex-col items-center justify-center text-slate-400 flex-shrink-0">
                         <Camera className="w-6 h-6 mb-1" />
                         <span className="text-[10px]">No Photo</span>
                       </div>
@@ -1182,6 +1252,67 @@ export default function ObservationsPage() {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Full Image Preview Modal / Lightbox */}
+        {previewImage && (
+          <div
+            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150"
+            onClick={() => setPreviewImage(null)}
+          >
+            {/* Header Control Bar */}
+            <div
+              className="w-full max-w-4xl flex items-center justify-between py-2.5 px-4 mb-3 bg-slate-900/90 rounded-xl border border-white/15 backdrop-blur-md text-white shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <span className="font-mono text-xs font-bold bg-sky-500/20 text-sky-300 px-2.5 py-0.5 rounded border border-sky-400/30 whitespace-nowrap">
+                  Photo Evidence
+                </span>
+                {previewTitle && (
+                  <span className="text-xs text-slate-200 font-medium truncate">
+                    {previewTitle}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <a
+                  href={previewImage}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2.5 py-1 text-xs bg-white/10 hover:bg-white/20 text-slate-200 rounded-lg transition flex items-center gap-1.5"
+                  title="Open image in new browser tab"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Open Full Size</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewImage(null)}
+                  className="p-1.5 bg-white/10 hover:bg-rose-600/80 text-white rounded-lg transition"
+                  title="Close (Esc)"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Main High-Res Image Display */}
+            <div
+              className="relative max-w-4xl max-h-[82vh] w-full flex items-center justify-center overflow-hidden rounded-2xl bg-black/40 border border-white/10 shadow-2xl p-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={previewImage}
+                alt="Hazard Evidence Full View"
+                className="max-w-full max-h-[80vh] w-auto h-auto object-contain rounded-xl select-none"
+              />
+            </div>
+
+            <div className="text-[11px] text-slate-400 mt-2.5 flex items-center gap-1">
+              <span>Press <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300 font-mono text-[10px]">Esc</kbd> or click anywhere outside to close</span>
             </div>
           </div>
         )}
