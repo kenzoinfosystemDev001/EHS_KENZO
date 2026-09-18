@@ -22,9 +22,70 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
+  // Dynamic CORS Configuration
+  const configuredOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
+    : [];
+
+  const defaultAllowedOrigins = [
+    "http://localhost:3000",
+    "http://localhost:4000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:4000",
+    "http://127.0.0.1:5173",
+    "https://ehs-kenzo.vercel.app",
+    "https://ehs-kenzo.onrender.com",
+  ];
+
+  const allowedOrigins = Array.from(
+    new Set([...configuredOrigins, ...defaultAllowedOrigins]),
+  );
+
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      // Allow requests with no origin (like mobile apps, curl, health checks)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      try {
+        const originUrl = new URL(origin);
+        // Allow if in explicitly configured list, wildcard, or matches Vercel / Render / localhost domains
+        if (
+          allowedOrigins.includes(origin) ||
+          allowedOrigins.includes("*") ||
+          /\.vercel\.app$/.test(originUrl.hostname) ||
+          /localhost(:\d+)?$/.test(originUrl.host) ||
+          /127\.0\.0\.1(:\d+)?$/.test(originUrl.host) ||
+          /\.onrender\.com$/.test(originUrl.hostname)
+        ) {
+          return callback(null, true);
+        }
+      } catch {
+        // Fallback check if URL parsing fails
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+      }
+
+      logger.warn(`CORS rejected for origin: ${origin}`);
+      return callback(null, false);
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    allowedHeaders: [
+      "Origin",
+      "X-Requested-With",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "X-Request-Id",
+    ],
+    exposedHeaders: ["X-Request-Id"],
   });
 
   app.setGlobalPrefix("api/v1");

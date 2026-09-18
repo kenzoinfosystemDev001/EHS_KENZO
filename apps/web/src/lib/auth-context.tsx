@@ -9,8 +9,7 @@ import React, {
   useRef,
 } from "react";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+import { getApiBaseUrl } from "./api";
 
 export interface UserProfile {
   id: string;
@@ -51,7 +50,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     refreshingRef.current = (async () => {
       try {
-        const res = await fetch(`${API_BASE}/auth/refresh`, {
+        const apiBase = getApiBaseUrl();
+        const res = await fetch(`${apiBase}/auth/refresh`, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
@@ -82,8 +82,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       setIsLoading(true);
       try {
+        const apiBase = getApiBaseUrl();
         // Try to get fresh token via refresh cookie
-        const res = await fetch(`${API_BASE}/auth/refresh`, {
+        const res = await fetch(`${apiBase}/auth/refresh`, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
@@ -95,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const token = data.data.accessToken;
             setAccessToken(token);
             // Fetch user profile
-            const meRes = await fetch(`${API_BASE}/auth/me`, {
+            const meRes = await fetch(`${apiBase}/auth/me`, {
               credentials: "include",
               headers: { Authorization: `Bearer ${token}` },
             });
@@ -114,15 +115,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-    if (!data.success) {
-      throw new Error(data.message || "Login failed");
+    const apiBase = getApiBaseUrl();
+    let res: Response;
+    try {
+      res = await fetch(`${apiBase}/auth/login`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `Unable to reach backend API at ${apiBase}. If this is a deployed environment, ensure CORS allows this origin and the backend is awake. (${msg})`,
+      );
+    }
+
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.success) {
+      throw new Error(
+        data?.message ||
+          data?.error?.message ||
+          `Authentication failed with status ${res.status}`,
+      );
     }
     setAccessToken(data.data.accessToken);
     setUser(data.data.user);
@@ -131,7 +146,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     try {
       if (accessToken) {
-        await fetch(`${API_BASE}/auth/logout`, {
+        const apiBase = getApiBaseUrl();
+        await fetch(`${apiBase}/auth/logout`, {
           method: "POST",
           credentials: "include",
           headers: { Authorization: `Bearer ${accessToken}` },

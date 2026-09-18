@@ -1,5 +1,27 @@
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+export function getApiBaseUrl(): string {
+  let url = process.env.NEXT_PUBLIC_API_URL;
+  if (!url) {
+    if (
+      typeof window !== "undefined" &&
+      window.location.hostname !== "localhost" &&
+      window.location.hostname !== "127.0.0.1"
+    ) {
+      url = "https://ehs-kenzo.onrender.com/api/v1";
+    } else {
+      url = "http://localhost:4000/api/v1";
+    }
+  }
+
+  // Remove trailing slashes
+  url = url.replace(/\/+$/, "");
+
+  // If provided URL doesn't end with /api/v1, append it
+  if (!url.endsWith("/api/v1")) {
+    url = `${url}/api/v1`;
+  }
+
+  return url;
+}
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -43,8 +65,9 @@ export async function apiClient<T>(
       headers.set("Authorization", `Bearer ${token}`);
     }
 
+    const baseUrl = getApiBaseUrl();
     return fetch(
-      `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`,
+      `${baseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`,
       { ...options, headers, credentials: "include" },
     );
   };
