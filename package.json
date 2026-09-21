@@ -14,7 +14,8 @@
     "seed": "tsx prisma/seed.ts"
   },
   "scripts": {
-    "build": "pnpm -r --filter=!@kenzo-ehs/mobile run build",
+    "postinstall": "prisma generate",
+    "build": "prisma generate && pnpm -r --filter=!@kenzo-ehs/mobile run build",
     "dev:api": "pnpm --filter @kenzo-ehs/api run start:dev",
     "dev:web": "pnpm --filter @kenzo-ehs/web run dev",
     "lint": "pnpm -r --filter=!@kenzo-ehs/mobile run lint",

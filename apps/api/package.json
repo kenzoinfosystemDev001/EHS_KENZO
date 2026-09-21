@@ -4,6 +4,7 @@
   "private": true,
   "description": "Kenzo EHS Enterprise Modular Monolith Backend (NestJS)",
   "scripts": {
+    "prebuild": "prisma generate --schema=../../prisma/schema.prisma",
     "build": "nest build && node -e \"const fs = require('fs'); fs.writeFileSync('dist/main.js', 'require(\\\"./apps/api/src/main\\\");\\n'); if (!fs.existsSync('dist/src')) fs.mkdirSync('dist/src', {recursive:true}); fs.writeFileSync('dist/src/main.js', 'require(\\\"../apps/api/src/main\\\");\\n');\"",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "node dist/apps/api/src/main",

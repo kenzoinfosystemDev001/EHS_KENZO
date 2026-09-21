@@ -1,4 +1,4 @@
-﻿import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
 import { Prisma } from "@prisma/client";
 
@@ -26,7 +26,7 @@ export class SequenceAllocatorService {
     padding: number = 4,
     tx?: Prisma.TransactionClient,
   ): Promise<string> {
-    const client = tx || this.prisma;
+    const client: any = tx || this.prisma;
 
     const sequence = await client.entitySequence.upsert({
       where: {
