@@ -43,22 +43,40 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message = exObj.message || "Request validation failed";
       errorType = exObj.type || exObj.name || "RequestError";
     } else if (exception instanceof Error) {
-      this.logger.error(
-        `[${requestId}] Unhandled Exception: ${exception.message}`,
-        exception.stack,
-      );
+      status = HttpStatus.INTERNAL_SERVER_ERROR;
       message = exception.message || "Internal server error occurred";
+      errorType = exception.name || "InternalServerError";
+    }
+
+    const isProduction = process.env.NODE_ENV === "production";
+
+    // In production, never expose internal database/system errors or stack details to client
+    if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+      this.logger.error(
+        `[${requestId}] 5xx Error at ${request.method} ${request.url}: ${
+          exception instanceof Error ? exception.message : JSON.stringify(exception)
+        }`,
+        exception instanceof Error ? exception.stack : undefined,
+      );
+
+      if (isProduction) {
+        message = "An internal server error occurred. Please reference the requestId when contacting support.";
+        errorType = "INTERNAL_SERVER_ERROR";
+      }
     }
 
     const errorDetails = Array.isArray(message)
       ? message
       : typeof message === "object" && message !== null
         ? message
-        : [];
+        : undefined;
+
     const errorMessage =
       typeof message === "string"
         ? message
-        : "An error occurred during request processing";
+        : Array.isArray(message)
+          ? (message[0] as string) || "Validation failed"
+          : "An error occurred during request processing";
 
     response.status(status).json({
       success: false,
@@ -67,7 +85,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
       error: {
         code: errorType,
         message: errorMessage,
-        details: errorDetails,
+        requestId,
+        ...(errorDetails ? { details: errorDetails } : {}),
       },
       meta: {
         requestId,

@@ -13,73 +13,113 @@ async function bootstrap() {
   const logger = new Logger("Bootstrap");
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Explicitly configure body parsers with 50MB limit for high-res photo uploads
-  app.useBodyParser("json", { limit: "50mb" });
-  app.useBodyParser("urlencoded", { extended: true, limit: "50mb" });
+  // 1. Strict Request Body Limits (2MB for standard JSON/forms; dedicated mechanisms for files)
+  app.useBodyParser("json", { limit: "2mb" });
+  app.useBodyParser("urlencoded", { extended: true, limit: "2mb" });
 
-  // Security Headers
+  const isProduction = process.env.NODE_ENV === "production";
+
+  // 2. Production Security Headers & Content Security Policy (Helmet)
   app.use(
     helmet({
-      contentSecurityPolicy: false, // Permit Swagger UI inline assets
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: [
+            "'self'",
+            "'unsafe-inline'", // Required for Swagger UI
+            "'unsafe-eval'",
+          ],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com"],
+          connectSrc: [
+            "'self'",
+            process.env.WEB_APP_URL || "http://localhost:3000",
+            "https://res.cloudinary.com",
+          ],
+          fontSrc: ["'self'", "data:"],
+          objectSrc: ["'none'"],
+          frameAncestors: ["'none'"],
+          upgradeInsecureRequests: isProduction ? [] : null,
+        },
+      },
       crossOriginEmbedderPolicy: false,
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true,
+      },
+      frameguard: { action: "deny" },
+      noSniff: true,
+      referrerPolicy: { policy: "strict-origin-when-cross-origin" },
     }),
   );
 
   app.use(cookieParser());
 
-  // Dynamic CORS Configuration
-  const configuredOrigins = process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
-    : [];
+  // 3. Hardened CORS Configuration (Eliminated unconstrained wildcards in production)
+  const explicitOrigins = [
+    process.env.CORS_ALLOWED_ORIGINS,
+    process.env.CORS_ORIGIN,
+    process.env.WEB_APP_URL,
+    process.env.ADMIN_APP_URL,
+    process.env.MOBILE_APP_ORIGIN,
+  ]
+    .filter(Boolean)
+    .flatMap((val) => val!.split(","))
+    .map((o) => o.trim())
+    .filter(Boolean);
 
-  const defaultAllowedOrigins = [
+  const productionAllowedOrigins = new Set([
+    ...explicitOrigins,
+    "https://ehs-kenzo.vercel.app",
+    "https://ehskenzo.vercel.app",
+    "https://ehs-kenzo.onrender.com",
+  ]);
+
+  const developmentAllowedOrigins = new Set([
+    ...productionAllowedOrigins,
     "http://localhost:3000",
     "http://localhost:4000",
     "http://localhost:5173",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:4000",
     "http://127.0.0.1:5173",
-    "https://ehs-kenzo.vercel.app",
-    "https://ehskenzo.vercel.app",
-    "https://ehs-kenzo.onrender.com",
-  ];
+  ]);
 
-  const allowedOrigins = Array.from(
-    new Set([...configuredOrigins, ...defaultAllowedOrigins]),
-  );
+  const allowedOriginsSet = isProduction
+    ? productionAllowedOrigins
+    : developmentAllowedOrigins;
 
   app.enableCors({
     origin: (
       origin: string | undefined,
       callback: (err: Error | null, allow?: boolean) => void,
     ) => {
-      // Allow requests with no origin (like mobile apps, curl, health checks)
+      // Allow requests with no origin (e.g. mobile native apps, curl, server-to-server, health checks)
       if (!origin) {
         return callback(null, true);
       }
 
-      try {
-        const originUrl = new URL(origin);
-        // Allow if in explicitly configured list, wildcard, or matches Vercel / Render / localhost domains
-        if (
-          allowedOrigins.includes(origin) ||
-          allowedOrigins.includes("*") ||
-          /\.vercel\.app$/.test(originUrl.hostname) ||
-          /localhost(:\d+)?$/.test(originUrl.host) ||
-          /127\.0\.0\.1(:\d+)?$/.test(originUrl.host) ||
-          /\.onrender\.com$/.test(originUrl.hostname)
-        ) {
-          return callback(null, true);
-        }
-      } catch {
-        // Fallback check if URL parsing fails
-        if (allowedOrigins.includes(origin)) {
-          return callback(null, true);
-        }
+      if (allowedOriginsSet.has(origin)) {
+        return callback(null, true);
       }
 
-      logger.warn(`CORS rejected for origin: ${origin}`);
-      return callback(null, false);
+      // In non-production only, allow dynamic local development ports
+      if (!isProduction) {
+        try {
+          const originUrl = new URL(origin);
+          if (
+            originUrl.hostname === "localhost" ||
+            originUrl.hostname === "127.0.0.1"
+          ) {
+            return callback(null, true);
+          }
+        } catch {}
+      }
+
+      logger.warn(`[CORS Blocked] Origin not allowed: ${origin}`);
+      return callback(new Error(`CORS blocked for origin: ${origin}`), false);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
@@ -90,6 +130,7 @@ async function bootstrap() {
       "Accept",
       "Authorization",
       "X-Request-Id",
+      "Idempotency-Key",
     ],
     exposedHeaders: ["X-Request-Id"],
   });

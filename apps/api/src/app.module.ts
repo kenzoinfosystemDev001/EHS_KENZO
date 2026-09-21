@@ -6,6 +6,7 @@ import { AuditModule } from "./modules/audit/audit.module";
 import { HealthModule } from "./modules/health/health.module";
 import { WorkflowModule } from "./modules/workflow/workflow.module";
 import { OutboxModule } from "./modules/outbox/outbox.module";
+import { EventsModule } from "./modules/events/events.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { DocumentsModule } from "./modules/documents/documents.module";
 import { HiraModule } from "./modules/hira/hira.module";
@@ -53,6 +54,7 @@ import { VersioningModule } from "./common/versioning/versioning.module";
     HealthModule,
     WorkflowModule,
     OutboxModule,
+    EventsModule,
     NotificationsModule,
     DocumentsModule,
     HiraModule,
