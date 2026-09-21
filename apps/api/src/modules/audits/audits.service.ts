@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
+import { SequenceAllocatorService } from "../../common/sequence/sequence-allocator.service";
 import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
 import { AuditPlanStatus } from "@prisma/client";
 
 @Injectable()
 export class AuditsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sequenceAllocator: SequenceAllocatorService,
+  ) {}
 
   async getPlans(user: AuthenticatedUserContext) {
     return this.prisma.auditPlan.findMany({
@@ -18,11 +22,12 @@ export class AuditsService {
   }
 
   async createPlan(dto: any, user: AuthenticatedUserContext) {
-    const count = await this.prisma.auditPlan.count({
-      where: { organizationId: user.organizationId },
-    });
-    const seq = String(count + 1).padStart(4, "0");
-    const referenceNumber = `AUD-2026-${seq}`;
+    const year = new Date().getFullYear();
+    const referenceNumber = await this.sequenceAllocator.nextReferenceNumber(
+      user.organizationId,
+      "AUDIT",
+      `AUD-${year}`,
+    );
 
     return this.prisma.auditPlan.create({
       data: {

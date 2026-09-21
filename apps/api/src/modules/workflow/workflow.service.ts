@@ -8,6 +8,7 @@ import {
 import { PrismaService } from "../../database/prisma.service";
 import { Prisma, WorkflowTaskStatus, WorkflowStatus } from "@prisma/client";
 import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
+import { SeparationOfDutiesPolicy } from "../../common/policies/separation-of-duties.policy";
 
 export interface TransitionParams {
   entityType: string;
@@ -17,6 +18,19 @@ export interface TransitionParams {
   comments?: string;
   payload?: Record<string, unknown>;
   tx: Prisma.TransactionClient;
+  record?: {
+    id: string;
+    createdById?: string | null;
+    authorId?: string | null;
+    observerId?: string | null;
+    ownerId?: string | null;
+    assigneeId?: string | null;
+    verifierId?: string | null;
+    leadInvestigatorId?: string | null;
+    requesterId?: string | null;
+    receiverId?: string | null;
+    [key: string]: any;
+  };
 }
 
 export interface TransitionResult {
@@ -29,7 +43,10 @@ export interface TransitionResult {
 export class WorkflowService {
   private readonly logger = new Logger(WorkflowService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sodPolicy: SeparationOfDutiesPolicy,
+  ) {}
 
   /**
    * Initializes or fetches a workflow instance for an entity
@@ -136,6 +153,16 @@ export class WorkflowService {
           `Actor does not have permission '${requiredPerm}' to perform '${action}'`,
         );
       }
+    }
+
+    // Enforce Separation of Duties if record context is provided
+    if (params.record) {
+      this.sodPolicy.assertSeparationOfDuties({
+        entityType,
+        action,
+        actor,
+        record: params.record,
+      });
     }
 
     // Update instance state

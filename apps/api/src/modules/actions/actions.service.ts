@@ -4,19 +4,24 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
+import { SequenceAllocatorService } from "../../common/sequence/sequence-allocator.service";
 import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
 import { ActionItemStatus, ActionSourceType, CapaPriority } from "@prisma/client";
 
 @Injectable()
 export class ActionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sequenceAllocator: SequenceAllocatorService,
+  ) {}
 
   async create(dto: any, user: AuthenticatedUserContext) {
-    const actCount = await this.prisma.actionItem.count({
-      where: { organizationId: user.organizationId },
-    });
-    const seq = String(actCount + 1).padStart(4, "0");
-    const referenceNumber = `ACT-2026-${seq}`;
+    const year = new Date().getFullYear();
+    const referenceNumber = await this.sequenceAllocator.nextReferenceNumber(
+      user.organizationId,
+      "ACTION",
+      `ACT-${year}`,
+    );
 
     return this.prisma.actionItem.create({
       data: {

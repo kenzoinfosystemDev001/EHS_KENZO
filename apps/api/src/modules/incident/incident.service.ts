@@ -13,6 +13,8 @@ import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
 import { IncidentStatus } from "@prisma/client";
 import { AccessScope } from "@kenzo-ehs/types";
 
+import { SequenceAllocatorService } from "../../common/sequence/sequence-allocator.service";
+
 const TX_CONFIG = { maxWait: 20000, timeout: 60000 };
 
 @Injectable()
@@ -50,6 +52,7 @@ export class IncidentService {
     private readonly auditService: AuditService,
     private readonly outboxService: OutboxService,
     private readonly workflowService: WorkflowService,
+    private readonly sequenceAllocator: SequenceAllocatorService,
   ) {}
 
   async create(dto: CreateIncidentDto, user: AuthenticatedUserContext) {
@@ -61,12 +64,14 @@ export class IncidentService {
     this.assertPlantAccess(plant.id, user);
 
     return this.prisma.$transaction(async (tx) => {
-      const count = await tx.incident.count({
-        where: { organizationId: user.organizationId, plantId: plant.id },
-      });
       const year = new Date().getFullYear();
-      const seq = String(count + 1).padStart(4, "0");
-      const referenceNumber = `INC-${year}-${plant.code}-${seq}`;
+      const referenceNumber = await this.sequenceAllocator.nextReferenceNumber(
+        user.organizationId,
+        "INCIDENT",
+        `INC-${year}-${plant.code}`,
+        4,
+        tx,
+      );
 
       const incident = await tx.incident.create({
         data: {
@@ -246,6 +251,11 @@ export class IncidentService {
           actor: user,
           comments: dto.comments,
           tx,
+          record: {
+            id: incident.id,
+            createdById: incident.reportedById,
+            leadInvestigatorId: incident.investigatorId,
+          },
         },
         transitions,
       );

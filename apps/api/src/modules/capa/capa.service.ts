@@ -7,6 +7,7 @@ import { PrismaService } from "../../database/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { OutboxService } from "../outbox/outbox.service";
 import { WorkflowService } from "../workflow/workflow.service";
+import { SequenceAllocatorService } from "../../common/sequence/sequence-allocator.service";
 import { CreateCapaDto, CapaActionDto } from "./dto/capa.dto";
 import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
 import { CapaStatus } from "@prisma/client";
@@ -34,6 +35,7 @@ export class CapaService {
     private readonly auditService: AuditService,
     private readonly outboxService: OutboxService,
     private readonly workflowService: WorkflowService,
+    private readonly sequenceAllocator: SequenceAllocatorService,
   ) {}
 
   async create(dto: CreateCapaDto, user: AuthenticatedUserContext) {
@@ -43,12 +45,14 @@ export class CapaService {
     if (!plant) throw new BadRequestException("Plant not found");
 
     return this.prisma.$transaction(async (tx) => {
-      const count = await tx.capaRecord.count({
-        where: { organizationId: user.organizationId },
-      });
       const year = new Date().getFullYear();
-      const seq = String(count + 1).padStart(4, "0");
-      const referenceNumber = `CAPA-${year}-${seq}`;
+      const referenceNumber = await this.sequenceAllocator.nextReferenceNumber(
+        user.organizationId,
+        "CAPA",
+        `CAPA-${year}`,
+        4,
+        tx,
+      );
 
       const dueDate = new Date();
       const daysByPriority = { CRITICAL: 7, HIGH: 14, MEDIUM: 30, LOW: 60 };
@@ -246,6 +250,11 @@ export class CapaService {
           actor: user,
           comments: dto.comments,
           tx,
+          record: {
+            id: capa.id,
+            createdById: capa.createdById,
+            ownerId: capa.assignedToId,
+          },
         },
         this.TRANSITIONS,
       );

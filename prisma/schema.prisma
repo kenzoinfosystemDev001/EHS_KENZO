@@ -254,6 +254,7 @@ model Organization {
   outboxEvents            OutboxEvent[]
   userRoles               UserRole[]
   hiraStudies             HiraStudy[]
+  entitySequences         EntitySequence[]
 
   @@index([code])
   @@index([isActive])
@@ -822,6 +823,20 @@ model OutboxEvent {
   @@index([processedAt, createdAt])
   @@index([organizationId])
   @@index([aggregateType, aggregateId])
+}
+
+model EntitySequence {
+  id             String       @id @default(uuid())
+  organizationId String
+  entityType     String       // e.g., HIRA, INCIDENT, CAPA, PTW, OBSERVATION, ACTION, AUDIT
+  prefix         String       // e.g., OBS-2026, INC-2026-PLANT-NW, CAPA-2026
+  lastValue      Int          @default(0)
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, entityType, prefix])
+  @@index([organizationId, entityType])
 }
 
 // ==============================================================================

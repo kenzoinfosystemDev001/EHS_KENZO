@@ -8,6 +8,7 @@ import { PrismaService } from "../../database/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { OutboxService } from "../outbox/outbox.service";
 import { WorkflowService } from "../workflow/workflow.service";
+import { SequenceAllocatorService } from "../../common/sequence/sequence-allocator.service";
 import { HiraRiskEngine } from "./hira-risk.engine";
 import { CreateHiraStudyDto } from "./dto/create-hira-study.dto";
 import { AddActivityDto } from "./dto/add-activity.dto";
@@ -21,7 +22,6 @@ import {
   RiskLevel,
 } from "@prisma/client";
 import { AccessScope, Permissions } from "@kenzo-ehs/types";
-import { formatReferenceId } from "@kenzo-ehs/utils";
 
 const TX_CONFIG = { maxWait: 20000, timeout: 60000 };
 
@@ -55,6 +55,7 @@ export class HiraService {
     private readonly auditService: AuditService,
     private readonly outboxService: OutboxService,
     private readonly workflowService: WorkflowService,
+    private readonly sequenceAllocator: SequenceAllocatorService,
   ) {}
 
   /**
@@ -76,16 +77,13 @@ export class HiraService {
     this.assertPlantAccess(plant.id, user);
 
     return this.prisma.$transaction(async (tx) => {
-      // Generate reference number: HIRA-2026-PLANT-0001
-      const count = await tx.hiraStudy.count({
-        where: { organizationId: user.organizationId, plantId: plant.id },
-      });
       const year = new Date().getFullYear();
-      const referenceNumber = formatReferenceId(
+      const referenceNumber = await this.sequenceAllocator.nextReferenceNumber(
+        user.organizationId,
         "HIRA",
-        year,
-        plant.code,
-        count + 1,
+        `HIRA-${year}-${plant.code}`,
+        4,
+        tx,
       );
 
       const study = await tx.hiraStudy.create({
@@ -659,6 +657,10 @@ export class HiraService {
           actor: user,
           comments: dto.comments,
           tx,
+          record: {
+            id: study.id,
+            createdById: study.createdById,
+          },
         },
         this.HIRA_TRANSITIONS,
       );

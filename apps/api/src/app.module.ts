@@ -33,6 +33,9 @@ import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { MediaModule } from "./modules/media/media.module";
 
 import { validateEnvironment } from "./config/env.validation";
+import { SequenceModule } from "./common/sequence/sequence.module";
+import { PoliciesModule } from "./common/policies/policies.module";
+import { VersioningModule } from "./common/versioning/versioning.module";
 
 @Module({
   imports: [
@@ -42,6 +45,9 @@ import { validateEnvironment } from "./config/env.validation";
       validate: validateEnvironment,
     }),
     DatabaseModule,
+    SequenceModule,
+    PoliciesModule,
+    VersioningModule,
     AuditModule,
     AuthModule,
     HealthModule,

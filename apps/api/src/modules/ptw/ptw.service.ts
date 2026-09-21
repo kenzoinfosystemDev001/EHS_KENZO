@@ -12,6 +12,8 @@ import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
 import { PtwStatus } from "@prisma/client";
 import { AccessScope } from "@kenzo-ehs/types";
 
+import { SequenceAllocatorService } from "../../common/sequence/sequence-allocator.service";
+
 const TX_CONFIG = { maxWait: 20000, timeout: 60000 };
 
 @Injectable()
@@ -42,6 +44,7 @@ export class PtwService {
     private readonly auditService: AuditService,
     private readonly outboxService: OutboxService,
     private readonly workflowService: WorkflowService,
+    private readonly sequenceAllocator: SequenceAllocatorService,
   ) {}
 
   async create(dto: CreatePtwDto, user: AuthenticatedUserContext) {
@@ -51,12 +54,14 @@ export class PtwService {
     if (!plant) throw new BadRequestException("Plant not found");
 
     return this.prisma.$transaction(async (tx) => {
-      const count = await tx.permitToWork.count({
-        where: { organizationId: user.organizationId, plantId: plant.id },
-      });
       const year = new Date().getFullYear();
-      const seq = String(count + 1).padStart(4, "0");
-      const referenceNumber = `PTW-${year}-${plant.code}-${seq}`;
+      const referenceNumber = await this.sequenceAllocator.nextReferenceNumber(
+        user.organizationId,
+        "PTW",
+        `PTW-${year}-${plant.code}`,
+        4,
+        tx,
+      );
 
       const ptw = await tx.permitToWork.create({
         data: {
@@ -210,6 +215,11 @@ export class PtwService {
           actor: user,
           comments: dto.comments,
           tx,
+          record: {
+            id: ptw.id,
+            createdById: ptw.requestedById,
+            requesterId: ptw.requestedById,
+          },
         },
         this.TRANSITIONS,
       );

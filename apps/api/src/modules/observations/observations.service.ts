@@ -17,6 +17,8 @@ import {
   IncidentSeverity,
 } from "@prisma/client";
 import { EscalateObservationDto } from "./dto/observation.dto";
+import { SequenceAllocatorService } from "../../common/sequence/sequence-allocator.service";
+import { SeparationOfDutiesPolicy } from "../../common/policies/separation-of-duties.policy";
 
 const TX_CONFIG = { maxWait: 20000, timeout: 60000 };
 
@@ -27,25 +29,30 @@ export const OBSERVATION_WORKFLOW_STAGES = [
   { stage: 4, key: "PENDING_CONTRACTOR", name: "Contractor Assessment", role: "CONTRACTOR_COORDINATOR", title: "Contractor Coordinator" },
   { stage: 5, key: "PENDING_HSE_MANAGER", name: "HSE Manager Verification", role: "HSE_MANAGER", title: "HSE Manager" },
   { stage: 6, key: "PENDING_HEALTH_INSPECTOR", name: "Health Inspector Clearance", role: "OCCUPATIONAL_HEALTH_OFFICER", title: "Health Inspector / OHO" },
-  { stage: 7, key: "PENDING_SUB_ADMIN", name: "Sub Admin Pre-Approval", role: "CORPORATE_HSE", title: "Sub Admin / Corporate HSE" },
-  { stage: 8, key: "PENDING_ADMIN_APPROVAL", name: "Admin Resource Allocation & Approval", role: "ADMIN", title: "Administrator" },
+  { stage: 7, key: "PENDING_SUB_ADMIN", name: "Sub Admin Pre-Approval", role: "CORPORATE_HSE", title: "Sub Admin / Safety Officer" },
+  { stage: 8, key: "PENDING_ADMIN_APPROVAL", name: "Plant Head Final Approval", role: "ADMIN", title: "Admin / Plant Head" },
+  { stage: 9, key: "SCHEDULED_FOR_FIXING", name: "Scheduled for Fixing", role: "MAINTENANCE_HEAD", title: "Maintenance & Execution" },
 ];
 
-export function determineInitialWorkflow(user: AuthenticatedUserContext, description: string, photoUrl: string | null) {
+export function determineInitialWorkflow(
+  user: AuthenticatedUserContext,
+  description?: string,
+  photoUrl?: string | null,
+) {
   const roles = user.roles || [];
   let startStage = 1;
 
-  if (roles.some((r) => ["ADMIN", "SYSTEM_ADMIN"].includes(r))) {
+  if (roles.some((r) => ["ADMIN", "SYSTEM_ADMIN", "PLANT_HEAD"].includes(r))) {
     startStage = 8;
-  } else if (roles.some((r) => ["CORPORATE_HSE", "PLANT_HEAD"].includes(r))) {
+  } else if (roles.some((r) => ["CORPORATE_HSE", "SAFETY_OFFICER"].includes(r))) {
     startStage = 7;
-  } else if (roles.some((r) => ["OCCUPATIONAL_HEALTH_OFFICER", "INDUSTRIAL_HYGIENIST", "EMERGENCY_RESPONSE_COORDINATOR"].includes(r))) {
+  } else if (roles.some((r) => ["OCCUPATIONAL_HEALTH_OFFICER", "INDUSTRIAL_HYGIENIST"].includes(r))) {
     startStage = 6;
-  } else if (roles.some((r) => ["HSE_MANAGER", "SAFETY_OFFICER"].includes(r))) {
+  } else if (roles.some((r) => ["HSE_MANAGER", "ENVIRONMENT_MANAGER"].includes(r))) {
     startStage = 5;
-  } else if (roles.some((r) => ["CONTRACTOR_COORDINATOR", "CONTRACTOR_WORKMAN", "CONTRACTOR"].includes(r))) {
-    startStage = 4; // Starts from contractor -> next step goes immediately to HSE Manager!
-  } else if (roles.some((r) => ["DEPARTMENT_HEAD", "MAINTENANCE_HEAD", "PERMIT_ISSUER", "TRAINER", "LD_MANAGER", "ENVIRONMENT_MANAGER"].includes(r))) {
+  } else if (roles.some((r) => ["CONTRACTOR_COORDINATOR"].includes(r))) {
+    startStage = 4;
+  } else if (roles.some((r) => ["DEPARTMENT_HEAD", "MAINTENANCE_HEAD"].includes(r))) {
     startStage = 3;
   } else if (roles.some((r) => ["SUPERVISOR"].includes(r))) {
     startStage = 2;
@@ -53,7 +60,7 @@ export function determineInitialWorkflow(user: AuthenticatedUserContext, descrip
     startStage = 1; // Worker / Plant operator
   }
 
-  const nextStageIndex = Math.min(startStage + 1, 8);
+  const nextStageIndex = Math.min(startStage + 1, 9);
   const nextStageDef = OBSERVATION_WORKFLOW_STAGES[nextStageIndex - 1];
 
   const stages = OBSERVATION_WORKFLOW_STAGES.map((s) => {
@@ -94,6 +101,8 @@ export class ObservationsService {
     private readonly audit: AuditService,
     private readonly outbox: OutboxService,
     private readonly cloudinary: CloudinaryService,
+    private readonly sequenceAllocator: SequenceAllocatorService,
+    private readonly sodPolicy: SeparationOfDutiesPolicy,
   ) {}
 
   private async getOrCreateObservationWorkflowDefinition(tx: any, organizationId: string) {
@@ -150,11 +159,15 @@ export class ObservationsService {
         }
       }
 
-      const refCount = await tx.safetyObservation.count({
-        where: { organizationId: user.organizationId },
-      });
-      const seq = String(refCount + 1).padStart(4, "0");
-      const referenceNumber = `OBS-2026-${seq}`;
+      const year = new Date().getFullYear();
+      const referenceNumber =
+        await this.sequenceAllocator.nextReferenceNumber(
+          user.organizationId,
+          "OBSERVATION",
+          `OBS-${year}`,
+          4,
+          tx,
+        );
 
       const obsType = dto.observationType || dto.type || ObservationType.UNSAFE_CONDITION;
       const severity = dto.severity || IncidentSeverity.MEDIUM;
@@ -362,6 +375,15 @@ export class ObservationsService {
         throw new NotFoundException("Observation not found");
       }
 
+      if (dto.action === "ADMIN_APPROVE_AND_SCHEDULE") {
+        this.sodPolicy.assertSeparationOfDuties({
+          entityType: "SafetyObservation",
+          action: "ADMIN_APPROVE_AND_SCHEDULE",
+          actor: user,
+          record: { id: obs.id, observerId: obs.observerId },
+        });
+      }
+
       let wfInstance = await tx.workflowInstance.findFirst({
         where: {
           organizationId: user.organizationId,
@@ -513,11 +535,15 @@ export class ObservationsService {
           },
         });
 
-        const actCount = await tx.actionItem.count({
-          where: { organizationId: user.organizationId },
-        });
-        const seq = String(actCount + 1).padStart(4, "0");
-        const referenceNumber = `ACT-2026-${seq}`;
+        const year = new Date().getFullYear();
+        const referenceNumber =
+          await this.sequenceAllocator.nextReferenceNumber(
+            user.organizationId,
+            "ACTION",
+            `ACT-${year}`,
+            4,
+            tx,
+          );
 
         actionItemCreated = await tx.actionItem.create({
           data: {
@@ -686,11 +712,15 @@ export class ObservationsService {
         },
       });
 
-      const actCount = await tx.actionItem.count({
-        where: { organizationId: user.organizationId },
-      });
-      const seq = String(actCount + 1).padStart(4, "0");
-      const referenceNumber = `ACT-2026-${seq}`;
+      const year = new Date().getFullYear();
+      const referenceNumber =
+        await this.sequenceAllocator.nextReferenceNumber(
+          user.organizationId,
+          "ACTION",
+          `ACT-${year}`,
+          4,
+          tx,
+        );
 
       const action = await tx.actionItem.create({
         data: {
@@ -735,6 +765,13 @@ export class ObservationsService {
         throw new NotFoundException("Observation not found");
       }
 
+      this.sodPolicy.assertSeparationOfDuties({
+        entityType: "SafetyObservation",
+        action: "VERIFY",
+        actor: user,
+        record: { id: existing.id, observerId: existing.observerId },
+      });
+
       const obs = await tx.safetyObservation.update({
         where: { id: existing.id },
         data: { status: ObservationStatus.VERIFIED },
@@ -763,6 +800,13 @@ export class ObservationsService {
       if (!existing) {
         throw new NotFoundException("Observation not found");
       }
+
+      this.sodPolicy.assertSeparationOfDuties({
+        entityType: "SafetyObservation",
+        action: "CLOSE",
+        actor: user,
+        record: { id: existing.id, observerId: existing.observerId },
+      });
 
       const obs = await tx.safetyObservation.update({
         where: { id: existing.id },

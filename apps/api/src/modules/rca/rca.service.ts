@@ -7,6 +7,7 @@ import { PrismaService } from "../../database/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { OutboxService } from "../outbox/outbox.service";
 import { WorkflowService } from "../workflow/workflow.service";
+import { SequenceAllocatorService } from "../../common/sequence/sequence-allocator.service";
 import {
   CreateRcaDto,
   RcaActionDto,
@@ -26,6 +27,7 @@ export class RcaService {
     [RcaStatus.REVIEW]: {
       APPROVE: RcaStatus.APPROVED,
       REWORK: RcaStatus.IN_PROGRESS,
+      REJECT: RcaStatus.IN_PROGRESS,
     },
     [RcaStatus.APPROVED]: { CLOSE: RcaStatus.CLOSED },
   };
@@ -35,6 +37,7 @@ export class RcaService {
     private readonly auditService: AuditService,
     private readonly outboxService: OutboxService,
     private readonly workflowService: WorkflowService,
+    private readonly sequenceAllocator: SequenceAllocatorService,
   ) {}
 
   async create(dto: CreateRcaDto, user: AuthenticatedUserContext) {
@@ -44,15 +47,14 @@ export class RcaService {
     if (!incident) throw new NotFoundException("Incident not found");
 
     return this.prisma.$transaction(async (tx) => {
-      const count = await tx.rcaStudy.count({
-        where: {
-          organizationId: user.organizationId,
-          plantId: incident.plantId,
-        },
-      });
       const year = new Date().getFullYear();
-      const seq = String(count + 1).padStart(4, "0");
-      const referenceNumber = `RCA-${year}-${seq}`;
+      const referenceNumber = await this.sequenceAllocator.nextReferenceNumber(
+        user.organizationId,
+        "RCA",
+        `RCA-${year}`,
+        4,
+        tx,
+      );
 
       const rca = await tx.rcaStudy.create({
         data: {
@@ -200,6 +202,11 @@ export class RcaService {
           actor: user,
           comments: dto.comments,
           tx,
+          record: {
+            id: rca.id,
+            createdById: rca.leadInvestigatorId,
+            leadInvestigatorId: rca.leadInvestigatorId,
+          },
         },
         this.TRANSITIONS,
       );
