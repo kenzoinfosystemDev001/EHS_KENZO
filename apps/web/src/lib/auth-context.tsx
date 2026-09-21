@@ -113,19 +113,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      // 1. Immediately hydrate from localStorage if present
+      // 1. Check for token in memory/storage to initiate server verification
       if (typeof window !== "undefined") {
         try {
-          const cachedUser = localStorage.getItem(USER_KEY);
           const cachedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-          if (cachedUser && cachedToken) {
-            setUser(JSON.parse(cachedUser));
+          if (cachedToken) {
             setAccessToken(cachedToken);
             setApiToken(cachedToken);
-            setClientSessionCookie(true);
           }
         } catch {
-          // Ignore parse errors
+          // Ignore storage errors
         }
       }
 

@@ -32,11 +32,14 @@ import { ComplianceModule } from "./modules/compliance/compliance.module";
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { MediaModule } from "./modules/media/media.module";
 
+import { validateEnvironment } from "./config/env.validation";
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: [".env", "../../.env"],
+      validate: validateEnvironment,
     }),
     DatabaseModule,
     AuditModule,

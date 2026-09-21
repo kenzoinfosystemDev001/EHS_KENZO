@@ -116,6 +116,25 @@ export class AuthController {
     return this.authService.logout(sessionId);
   }
 
+  @Post("logout-all")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Revoke all active sessions for the current user across all devices" })
+  @ApiResponse({ status: 200, description: "All sessions revoked successfully" })
+  async logoutAll(
+    @CurrentUser() user: AuthenticatedUserContext,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const isProd = process.env.NODE_ENV === "production";
+    res.clearCookie("kenzo_refresh_token", {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? "none" : "lax",
+    });
+    return this.authService.logoutAll(user.id);
+  }
+
   @Get("me")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

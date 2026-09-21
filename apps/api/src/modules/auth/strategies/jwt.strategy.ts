@@ -16,12 +16,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
+    const secret = configService.get<string>("JWT_ACCESS_SECRET");
+    if (!secret) {
+      throw new Error(
+        "[FATAL] JWT_ACCESS_SECRET is missing in JwtStrategy. Production cannot start without an explicit JWT secret.",
+      );
+    }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey:
-        configService.get<string>("JWT_ACCESS_SECRET") ||
-        "kenzo_ehs_dev_jwt_access_secret_super_secure_key_2026_min32",
+      secretOrKey: secret,
     });
   }
 

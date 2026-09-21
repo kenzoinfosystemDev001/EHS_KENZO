@@ -638,8 +638,15 @@ export class ObservationsService {
 
   async review(id: string, dto: any, user: AuthenticatedUserContext) {
     return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.safetyObservation.findFirst({
+        where: { id, organizationId: user.organizationId },
+      });
+      if (!existing) {
+        throw new NotFoundException("Observation not found");
+      }
+
       const obs = await tx.safetyObservation.update({
-        where: { id },
+        where: { id: existing.id },
         data: {
           status: ObservationStatus.REVIEWED,
           reviewerId: user.id,
@@ -653,6 +660,7 @@ export class ObservationsService {
         action: "OBSERVATION.REVIEW",
         entityType: "SafetyObservation",
         entityId: obs.id,
+        beforeState: { status: existing.status },
         afterState: { status: obs.status },
         reason: dto.comments || "Reviewed",
         tx,
@@ -663,8 +671,15 @@ export class ObservationsService {
 
   async requireAction(id: string, user: AuthenticatedUserContext) {
     return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.safetyObservation.findFirst({
+        where: { id, organizationId: user.organizationId },
+      });
+      if (!existing) {
+        throw new NotFoundException("Observation not found");
+      }
+
       const obs = await tx.safetyObservation.update({
-        where: { id },
+        where: { id: existing.id },
         data: {
           status: ObservationStatus.ACTION_REQUIRED,
           actionRequired: true,
@@ -701,6 +716,7 @@ export class ObservationsService {
         action: "OBSERVATION.REQUIRE_ACTION",
         entityType: "SafetyObservation",
         entityId: obs.id,
+        beforeState: { status: existing.status },
         afterState: { status: obs.status, actionId: action.id },
         reason: "Action assigned",
         tx,
@@ -712,8 +728,15 @@ export class ObservationsService {
 
   async verify(id: string, user: AuthenticatedUserContext) {
     return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.safetyObservation.findFirst({
+        where: { id, organizationId: user.organizationId },
+      });
+      if (!existing) {
+        throw new NotFoundException("Observation not found");
+      }
+
       const obs = await tx.safetyObservation.update({
-        where: { id },
+        where: { id: existing.id },
         data: { status: ObservationStatus.VERIFIED },
       });
       await this.audit.log({
@@ -723,6 +746,7 @@ export class ObservationsService {
         action: "OBSERVATION.VERIFY",
         entityType: "SafetyObservation",
         entityId: obs.id,
+        beforeState: { status: existing.status },
         afterState: { status: obs.status },
         reason: "Observation verified",
         tx,
@@ -733,8 +757,15 @@ export class ObservationsService {
 
   async close(id: string, user: AuthenticatedUserContext) {
     return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.safetyObservation.findFirst({
+        where: { id, organizationId: user.organizationId },
+      });
+      if (!existing) {
+        throw new NotFoundException("Observation not found");
+      }
+
       const obs = await tx.safetyObservation.update({
-        where: { id },
+        where: { id: existing.id },
         data: {
           status: ObservationStatus.CLOSED,
           closedAt: new Date(),
@@ -747,6 +778,7 @@ export class ObservationsService {
         action: "OBSERVATION.CLOSE",
         entityType: "SafetyObservation",
         entityId: obs.id,
+        beforeState: { status: existing.status },
         afterState: { status: obs.status },
         reason: "Observation closed",
         tx,

@@ -6,13 +6,17 @@ import {
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { PERMISSIONS_KEY } from "../decorators/require-permissions.decorator";
-import { Permission } from "@kenzo-ehs/types";
+import { Permission, Permissions } from "@kenzo-ehs/types";
 import { AuthenticatedUserContext } from "../../modules/auth/interfaces/auth.interface";
 
+const ALL_CANONICAL_PERMISSIONS = Object.values(Permissions);
+
 // ─── Implicit role → permissions mapping ──────────────────────────────────────
-// These are the permissions each role implicitly has, regardless of DB rows.
-// Admin/System Admin bypass the guard entirely (handled below).
+// Canonical permissions granted implicitly per enterprise role.
+// Deny-by-default: Even administrators must be granted permissions through the RBAC matrix.
 const ROLE_PERMISSIONS: Record<string, string[]> = {
+  SYSTEM_ADMIN: ALL_CANONICAL_PERMISSIONS,
+  ADMIN: ALL_CANONICAL_PERMISSIONS,
   WORKER: [
     "OBSERVATION.READ", "OBSERVATION.CREATE",
   ],
@@ -203,11 +207,6 @@ export class PermissionsGuard implements CanActivate {
 
     if (!user) {
       throw new ForbiddenException("Access denied: User authentication missing");
-    }
-
-    // Superusers bypass all permission checks
-    if (user.roles?.some((r) => ["SYSTEM_ADMIN", "ADMIN"].includes(r))) {
-      return true;
     }
 
     // Check against effective permissions (DB + implicit role permissions)

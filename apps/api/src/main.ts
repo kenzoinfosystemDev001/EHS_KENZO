@@ -133,10 +133,13 @@ async function bootstrap() {
   SwaggerModule.setup("docs", app, document);
 
   const port = process.env.PORT || process.env.API_PORT || 4000;
-  await app.listen(port);
-  logger.log(`Kenzo EHS API is operational at http://localhost:${port}/api/v1`);
+  const host = process.env.HOST || "0.0.0.0";
+  await app.listen(port, host);
   logger.log(
-    `OpenAPI Swagger documentation available at http://localhost:${port}/docs`,
+    `Kenzo EHS API is operational at http://${host === "0.0.0.0" ? "localhost" : host}:${port}/api/v1`,
+  );
+  logger.log(
+    `OpenAPI Swagger documentation available at http://${host === "0.0.0.0" ? "localhost" : host}:${port}/docs`,
   );
 }
 

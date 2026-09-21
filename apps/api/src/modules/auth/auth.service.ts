@@ -17,6 +17,8 @@ import { AccessScope } from "@kenzo-ehs/types";
 import * as bcrypt from "bcrypt";
 import * as crypto from "crypto";
 
+import { AuthThrottlerService } from "./auth-throttler.service";
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -24,6 +26,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly throttler: AuthThrottlerService,
   ) {}
 
   /**
@@ -39,6 +42,9 @@ export class AuthService {
     expiresIn: number;
     user: AuthenticatedUserContext;
   }> {
+    // 1. Enforce rate limiting and brute-force lockout protection
+    this.throttler.assertLoginAllowed(ipAddress, dto.email);
+
     // Look up user by email with support for email aliases
     const rawEmail = dto.email.toLowerCase().trim();
     const EMAIL_ALIASES: Record<string, string> = {
@@ -71,6 +77,7 @@ export class AuthService {
 
     // Uniform authentication failure response to prevent user enumeration
     if (!user) {
+      this.throttler.recordLoginFailure(ipAddress, dto.email);
       this.logger.warn(
         `Failed login attempt for non-existent user: ${dto.email}`,
       );
@@ -83,9 +90,13 @@ export class AuthService {
       user.passwordHash,
     );
     if (!isPasswordValid) {
+      this.throttler.recordLoginFailure(ipAddress, dto.email);
       this.logger.warn(`Failed password attempt for user: ${dto.email}`);
       throw new UnauthorizedException("Invalid email or password");
     }
+
+    // Credentials verified: reset failed attempt counter
+    this.throttler.recordLoginSuccess(ipAddress, dto.email);
 
     // Verify account status
     if (user.status !== "ACTIVE") {
@@ -174,6 +185,7 @@ export class AuthService {
     if (!dto.refreshToken) {
       throw new UnauthorizedException("Refresh token is required");
     }
+    this.throttler.assertRefreshAllowed(ipAddress, dto.refreshToken);
     const incomingTokenHash = this.hashToken(dto.refreshToken);
 
     const session = await this.prisma.session.findUnique({
@@ -268,6 +280,24 @@ export class AuthService {
       return { revoked: true };
     } catch {
       return { revoked: false };
+    }
+  }
+
+  /**
+   * Revoke all active sessions for a user (Global Logout)
+   */
+  async logoutAll(userId: string): Promise<{ revokedCount: number }> {
+    try {
+      const result = await this.prisma.session.updateMany({
+        where: { userId, isRevoked: false },
+        data: {
+          isRevoked: true,
+          revokedAt: new Date(),
+        },
+      });
+      return { revokedCount: result.count };
+    } catch {
+      return { revokedCount: 0 };
     }
   }
 

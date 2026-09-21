@@ -6,25 +6,33 @@ import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 
+import { AuthThrottlerService } from "./auth-throttler.service";
+
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret:
-          configService.get<string>("JWT_ACCESS_SECRET") ||
-          "kenzo_ehs_dev_jwt_access_secret_super_secure_key_2026_min32",
-        signOptions: {
-          expiresIn: (configService.get<string>("JWT_ACCESS_EXPIRATION") ||
-            "15m") as any,
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const secret = configService.get<string>("JWT_ACCESS_SECRET");
+        if (!secret) {
+          throw new Error(
+            "[FATAL] JWT_ACCESS_SECRET is missing. Production cannot start without an explicit JWT secret.",
+          );
+        }
+        return {
+          secret,
+          signOptions: {
+            expiresIn: (configService.get<string>("JWT_ACCESS_EXPIRATION") ||
+              "15m") as any,
+          },
+        };
+      },
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService, JwtStrategy, PassportModule],
+  providers: [AuthService, JwtStrategy, AuthThrottlerService],
+  exports: [AuthService, JwtStrategy, AuthThrottlerService, PassportModule],
 })
 export class AuthModule {}
