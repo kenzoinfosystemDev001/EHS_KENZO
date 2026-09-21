@@ -1,7 +1,6 @@
 ﻿import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
 import { OutboxService } from "../outbox/outbox.service";
 import { NotificationsService } from "../notifications/notifications.service";
-import { PrismaService } from "../../database/prisma.service";
 import { NotificationPriority, OutboxEvent } from "@prisma/client";
 
 @Injectable()
@@ -11,7 +10,6 @@ export class EventSubscribersService implements OnModuleInit {
   constructor(
     private readonly outboxService: OutboxService,
     private readonly notificationsService: NotificationsService,
-    private readonly prisma: PrismaService,
   ) {}
 
   onModuleInit() {
