@@ -366,11 +366,13 @@ export class AuthService {
     const permissionCodesSet = new Set<string>();
     const roleScopes: UserRoleScope[] = [];
 
-    // 1. Universal Access: Every enterprise employee and contractor has rights to report & view Safety Observations
+    // 1. Universal Access: Every enterprise employee and contractor has rights to report & view core safety sections
     permissionCodesSet.add("OBSERVATION.READ");
     permissionCodesSet.add("OBSERVATION.CREATE");
     permissionCodesSet.add("INCIDENT.READ");
     permissionCodesSet.add("INCIDENT.CREATE");
+    permissionCodesSet.add("HIRA.READ");
+    permissionCodesSet.add("CAPA.READ");
     permissionCodesSet.add("PTW.READ");
     permissionCodesSet.add("TRAINING.READ");
     permissionCodesSet.add("REPORTS.READ");

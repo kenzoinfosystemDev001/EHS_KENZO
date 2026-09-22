@@ -84,7 +84,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: "Risk & Operations",
     items: [
-      { label: "HIRA Register", href: "/hira", icon: ShieldAlert, allowedRoles: HSE_AND_ABOVE },
+      { label: "HIRA Register", href: "/hira", icon: ShieldAlert, allowedRoles: ALL_ROLES },
       {
         label: "Permit to Work", href: "/ptw", icon: ClipboardSignature,
         allowedRoles: ["PERMIT_ISSUER", "SUPERVISOR", ...MANAGER_AND_ABOVE],
@@ -95,10 +95,10 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: "Incidents & Learning",
     items: [
-      { label: "Incidents", href: "/incidents", icon: AlertTriangle, allowedRoles: SUPERVISOR_AND_ABOVE },
-      { label: "Near Misses", href: "/near-miss", icon: Target, allowedRoles: SUPERVISOR_AND_ABOVE },
+      { label: "Incidents", href: "/incidents", icon: AlertTriangle, allowedRoles: ALL_ROLES },
+      { label: "Near Misses", href: "/near-miss", icon: Target, allowedRoles: ALL_ROLES },
       { label: "Root Cause Analysis", href: "/rca", icon: Search, allowedRoles: MANAGER_AND_ABOVE },
-      { label: "CAPA", href: "/capa", icon: CheckCircle, allowedRoles: MANAGER_AND_ABOVE },
+      { label: "CAPA", href: "/capa", icon: CheckCircle, allowedRoles: ALL_ROLES },
     ],
   },
   {
@@ -115,7 +115,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       {
         label: "Training Matrix", href: "/training", icon: GraduationCap,
-        allowedRoles: ["TRAINER", "LD_MANAGER", ...MANAGER_AND_ABOVE],
+        allowedRoles: ALL_ROLES,
       },
       {
         label: "Contractors", href: "/contractors", icon: HardHat,
