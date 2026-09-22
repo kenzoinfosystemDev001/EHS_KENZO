@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Body, UseGuards } from "@nestjs/common";
+import { Controller, Get, Post, Body, Param, UseGuards } from "@nestjs/common";
 import { EmergencyService } from "./emergency.service";
-import { CreateDrillDto, CreateContactDto } from "./dto/emergency.dto";
+import { CreateDrillDto, CreateContactDto, CreateEmergencySosDto } from "./dto/emergency.dto";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "../../common/guards/permissions.guard";
 import { ScopeGuard } from "../../common/guards/scope.guard";
@@ -52,5 +52,26 @@ export class EmergencyController {
     @CurrentUser() user: AuthenticatedUserContext,
   ) {
     return this.emergencyService.createContact(dto, user);
+  }
+
+  @Post("sos")
+  triggerSos(
+    @Body() dto: CreateEmergencySosDto,
+    @CurrentUser() user: AuthenticatedUserContext,
+  ) {
+    return this.emergencyService.triggerSos(dto, user);
+  }
+
+  @Get("sos/active")
+  getActiveSos(@CurrentUser() user: AuthenticatedUserContext) {
+    return this.emergencyService.getActiveSos(user);
+  }
+
+  @Post("sos/:id/silence")
+  silenceSos(
+    @Param("id") id: string,
+    @CurrentUser() user: AuthenticatedUserContext,
+  ) {
+    return this.emergencyService.silenceSos(id, user);
   }
 }

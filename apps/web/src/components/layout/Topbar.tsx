@@ -3,6 +3,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { Menu } from "lucide-react";
+import { InstallAppButton } from "../pwa/InstallAppButton";
 
 export interface TopbarProps {
   user?: {
@@ -55,6 +56,8 @@ export function Topbar({
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4">
+        <InstallAppButton />
+
         <div className="flex items-center gap-2 sm:gap-3 pr-2 border-r border-slate-200">
           <div className="text-right hidden xs:block">
             <div className="text-xs font-semibold text-slate-900 truncate max-w-[120px] sm:max-w-none">
