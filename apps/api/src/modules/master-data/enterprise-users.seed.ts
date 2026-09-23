@@ -250,6 +250,14 @@ export async function seedAll19EnterpriseUsers(prisma: PrismaClient, orgId?: str
     deptMap[d.code] = dept.id;
   }
 
+  // Fast-path: If enterprise users already exist, return instantly without re-hashing
+  const existingUsersCount = await prisma.user.count({
+    where: { organizationId: org.id },
+  });
+  if (existingUsersCount >= ENTERPRISE_USERS.length) {
+    return { success: true, count: existingUsersCount };
+  }
+
   const defaultPasswordHash = await bcrypt.hash("KenzoEHS@2026!", 10);
 
   for (const item of ENTERPRISE_USERS) {

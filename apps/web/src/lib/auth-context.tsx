@@ -117,75 +117,112 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      // 1. Check for token in memory/storage to initiate server verification
+      let cachedToken: string | null = null;
+      let cachedUser: string | null = null;
+      let storedRefreshToken: string | null = null;
+
+      // 1. Instant Synchronous Hydration from Local Storage
       if (typeof window !== "undefined") {
         try {
-          const cachedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-          if (cachedToken) {
+          cachedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+          cachedUser = localStorage.getItem(USER_KEY);
+          storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+
+          if (cachedToken && cachedUser) {
             setAccessToken(cachedToken);
             setApiToken(cachedToken);
+            setUser(JSON.parse(cachedUser));
+            setClientSessionCookie(true);
+            setIsLoading(false); // IMMEDIATE ACCESS: Instant Portal render!
           }
         } catch {
           // Ignore storage errors
         }
       }
 
-      // 2. Validate/refresh session with the backend
+      // 2. If completely unauthenticated, unblock login UI immediately (0ms latency!)
+      if (!cachedToken && !storedRefreshToken) {
+        setIsLoading(false);
+        return;
+      }
+
+      // 3. Stale-while-revalidate verification in background without blocking user
       try {
         const apiBase = getApiBaseUrl();
-        const storedRefreshToken =
-          typeof window !== "undefined"
-            ? localStorage.getItem(REFRESH_TOKEN_KEY) || ""
-            : "";
 
-        const res = await fetch(`${apiBase}/auth/refresh`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken: storedRefreshToken }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && data.data.accessToken) {
-            const token = data.data.accessToken;
-            setAccessToken(token);
-            setApiToken(token);
-            if (typeof window !== "undefined") {
-              localStorage.setItem(ACCESS_TOKEN_KEY, token);
-              if (data.data.refreshToken) {
-                localStorage.setItem(REFRESH_TOKEN_KEY, data.data.refreshToken);
+        // If we already have a valid cached token, verify with /auth/me
+        if (cachedToken) {
+          const meRes = await fetch(`${apiBase}/auth/me`, {
+            credentials: "include",
+            headers: { Authorization: `Bearer ${cachedToken}` },
+          });
+
+          if (meRes.ok) {
+            const meData = await meRes.json();
+            if (meData.success && meData.data) {
+              setUser(meData.data);
+              if (typeof window !== "undefined") {
+                localStorage.setItem(USER_KEY, JSON.stringify(meData.data));
               }
+              setIsLoading(false);
+              return;
             }
-            setClientSessionCookie(true);
+          }
+        }
 
-            // Fetch user profile
-            const meRes = await fetch(`${apiBase}/auth/me`, {
-              credentials: "include",
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            if (meRes.ok) {
-              const meData = await meRes.json();
-              if (meData.success) {
-                setUser(meData.data);
-                if (typeof window !== "undefined") {
-                  localStorage.setItem(USER_KEY, JSON.stringify(meData.data));
+        // If token verification was not ok, attempt refresh with storedRefreshToken
+        if (storedRefreshToken) {
+          const res = await fetch(`${apiBase}/auth/refresh`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refreshToken: storedRefreshToken }),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.data?.accessToken) {
+              const token = data.data.accessToken;
+              setAccessToken(token);
+              setApiToken(token);
+              if (typeof window !== "undefined") {
+                localStorage.setItem(ACCESS_TOKEN_KEY, token);
+                if (data.data.refreshToken) {
+                  localStorage.setItem(REFRESH_TOKEN_KEY, data.data.refreshToken);
                 }
               }
+              setClientSessionCookie(true);
+
+              const meRes = await fetch(`${apiBase}/auth/me`, {
+                credentials: "include",
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (meRes.ok) {
+                const meData = await meRes.json();
+                if (meData.success && meData.data) {
+                  setUser(meData.data);
+                  if (typeof window !== "undefined") {
+                    localStorage.setItem(USER_KEY, JSON.stringify(meData.data));
+                  }
+                }
+              }
+              setIsLoading(false);
+              return;
             }
           }
-        } else if (res.status === 401) {
-          // Explicitly expired or invalid session
-          if (typeof window !== "undefined") {
-            localStorage.removeItem(ACCESS_TOKEN_KEY);
-            localStorage.removeItem(REFRESH_TOKEN_KEY);
-            localStorage.removeItem(USER_KEY);
-          }
-          setClientSessionCookie(false);
-          setUser(null);
-          setAccessToken(null);
         }
+
+        // If both token and refresh failed explicitly
+        if (typeof window !== "undefined") {
+          localStorage.removeItem(ACCESS_TOKEN_KEY);
+          localStorage.removeItem(REFRESH_TOKEN_KEY);
+          localStorage.removeItem(USER_KEY);
+        }
+        setClientSessionCookie(false);
+        setUser(null);
+        setAccessToken(null);
       } catch {
-        // Offline or network error - keep cached credentials if available
+        // Network or offline: keep cached session active
       } finally {
         setIsLoading(false);
       }
