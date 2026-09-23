@@ -315,7 +315,7 @@ export async function seedAll19EnterpriseUsers(prisma: PrismaClient, orgId?: str
       },
     });
 
-    // Ensure OBSERVATION.READ & OBSERVATION.CREATE are mapped in RolePermission
+    // Ensure baseline safety permissions are mapped in RolePermission for all roles
     const basePermissions = [
       { code: "OBSERVATION.READ", module: "OBSERVATIONS", action: "READ", description: "Read Safety Observations" },
       { code: "OBSERVATION.CREATE", module: "OBSERVATIONS", action: "CREATE", description: "Create Safety Observations" },
@@ -323,6 +323,12 @@ export async function seedAll19EnterpriseUsers(prisma: PrismaClient, orgId?: str
       { code: "OBSERVATION.CLOSE", module: "OBSERVATIONS", action: "CLOSE", description: "Close Safety Observations" },
       { code: "INCIDENT.READ", module: "INCIDENTS", action: "READ", description: "Read Incidents" },
       { code: "INCIDENT.CREATE", module: "INCIDENTS", action: "CREATE", description: "Create Incidents" },
+      { code: "CAPA.READ", module: "CAPA", action: "READ", description: "Read Corrective & Preventive Actions" },
+      { code: "CAPA.CREATE", module: "CAPA", action: "CREATE", description: "Create Corrective & Preventive Actions" },
+      { code: "HIRA.READ", module: "HIRA", action: "READ", description: "Read Hazard Identification & Risk Assessments" },
+      { code: "HIRA.CREATE", module: "HIRA", action: "CREATE", description: "Create Hazard Identification & Risk Assessments" },
+      { code: "TRAINING.READ", module: "TRAINING", action: "READ", description: "Read Safety Training Records" },
+      { code: "EMERGENCY.READ", module: "EMERGENCY", action: "READ", description: "Read Emergency Drills and Contacts" },
     ];
 
     for (const p of basePermissions) {

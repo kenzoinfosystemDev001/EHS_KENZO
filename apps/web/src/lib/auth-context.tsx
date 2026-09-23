@@ -9,7 +9,7 @@ import React, {
   useRef,
 } from "react";
 
-import { getApiBaseUrl, setApiToken } from "./api";
+import { getApiBaseUrl, setApiToken, setRefreshHandler } from "./api";
 
 export interface UserProfile {
   id: string;
@@ -110,6 +110,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return refreshingRef.current;
   }, []);
+
+  useEffect(() => {
+    setRefreshHandler(refreshAccessToken);
+  }, [refreshAccessToken]);
 
   useEffect(() => {
     (async () => {

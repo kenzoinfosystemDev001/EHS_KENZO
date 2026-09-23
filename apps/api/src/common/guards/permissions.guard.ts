@@ -213,6 +213,15 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
 };
 
+const COMMON_SAFETY_PERMISSIONS = [
+  "OBSERVATION.READ", "OBSERVATION.CREATE",
+  "INCIDENT.READ", "INCIDENT.CREATE",
+  "HIRA.READ", "HIRA.CREATE",
+  "CAPA.READ", "CAPA.CREATE",
+  "TRAINING.READ",
+  "EMERGENCY.READ",
+];
+
 /**
  * Get the effective permissions for a user by combining their DB-stored
  * permissions with the implicit permissions from their roles.
@@ -223,6 +232,10 @@ function getEffectivePermissions(user: AuthenticatedUserContext): Set<string> {
     for (const p of ROLE_PERMISSIONS[role] ?? []) {
       perms.add(p);
     }
+  }
+  // Universal baseline safety permissions: every user can read & report hazards, incidents, near-misses, HIRA, CAPA, and emergencies
+  for (const p of COMMON_SAFETY_PERMISSIONS) {
+    perms.add(p);
   }
   return perms;
 }

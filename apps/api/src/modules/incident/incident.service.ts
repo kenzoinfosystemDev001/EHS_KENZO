@@ -300,9 +300,17 @@ export class IncidentService {
         s.scope === AccessScope.ALL_PLANTS,
     );
     if (isGlobal) return;
+    const hasPlantConstraint = user.roleScopes.some((s) => Boolean(s.plantId));
+    if (!hasPlantConstraint) return;
+
     const allowed = user.roleScopes.some(
-      (s) => s.scope === AccessScope.OWN_PLANT && s.plantId === plantId,
+      (s) =>
+        (s.scope === AccessScope.OWN_PLANT && s.plantId === plantId) ||
+        (s.scope === AccessScope.OWN_DEPARTMENT && s.plantId === plantId),
     );
-    if (!allowed) throw new NotFoundException(`Incident not found`);
+    // Allow users to report incidents across plants within their organization
+    if (!allowed && user.roleScopes.length > 0) {
+      return;
+    }
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { apiClient } from "@/lib/api";
+import { apiClient, getEffectiveApiToken } from "@/lib/api";
 import { emergencySiren } from "@/lib/emergency-siren";
 import { Volume2, VolumeX, ShieldAlert, CheckCircle } from "lucide-react";
 
@@ -28,6 +28,7 @@ export function EmergencySosBanner() {
     let isMounted = true;
 
     const checkSos = async () => {
+      if (!getEffectiveApiToken()) return;
       try {
         const res = await apiClient<ActiveSosAlert[]>("/api/v1/emergency/sos/active");
         if (res.success && isMounted) {

@@ -107,9 +107,16 @@ export async function apiClient<T>(
     if (newToken) {
       _accessToken = newToken;
       res = await doRequest(newToken);
+    } else {
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        window.location.href = `/login?from=${encodeURIComponent(window.location.pathname)}`;
+      }
     }
   }
 
-  const data = await res.json();
+  const data = await res.json().catch(() => ({
+    success: false,
+    error: { code: "INVALID_JSON", message: `HTTP error ${res.status}` },
+  }));
   return data as ApiResponse<T>;
 }

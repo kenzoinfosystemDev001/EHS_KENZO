@@ -2,7 +2,19 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Public routes that don't require authentication
-const PUBLIC_ROUTES = ["/", "/login", "/api", "/_next", "/favicon.ico"];
+const PUBLIC_ROUTES = [
+  "/",
+  "/login",
+  "/api",
+  "/_next",
+  "/favicon.ico",
+  "/manifest.json",
+  "/manifest.webmanifest",
+  "/sw.js",
+  "/icon-192.svg",
+  "/icon-512.svg",
+  "/apple-touch-icon.svg",
+];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -35,5 +47,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|login).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|manifest|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|webmanifest)$).*)",
+  ],
 };

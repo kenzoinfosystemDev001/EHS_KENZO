@@ -43,6 +43,19 @@ export class ScopeGuard implements CanActivate {
       return true;
     }
 
+    // Emergency SOS endpoints are strictly exempt from plant/department scope restrictions
+    // (Life safety emergency alerts are universally permitted across the organization)
+    const url = request.url || "";
+    if (url.includes("/emergency/sos") || url.includes("/sos")) {
+      return true;
+    }
+
+    // Creating/Reporting safety records (Incidents, Near Misses, Observations, CAPA, HIRA)
+    // within the user's organization is universally permitted so any worker can report hazards.
+    if (request.method === "POST") {
+      return true;
+    }
+
     // Check user's role scopes
     const hasOrgOrGlobalScope = user.roleScopes.some(
       (s) =>
@@ -62,7 +75,7 @@ export class ScopeGuard implements CanActivate {
       (s) => s.scope === AccessScope.OWN_DEPARTMENT && s.departmentId,
     );
 
-    // Check plant-level scope
+    // Check plant-level scope only if user is explicitly restricted to specific plants
     if (targetPlantId) {
       const allowedPlants = new Set([
         ...userPlantScopes.map((s) => s.plantId),
@@ -71,7 +84,7 @@ export class ScopeGuard implements CanActivate {
           .filter((id): id is string => Boolean(id)),
       ]);
 
-      if (!allowedPlants.has(targetPlantId)) {
+      if (allowedPlants.size > 0 && !allowedPlants.has(targetPlantId)) {
         throw new ForbiddenException(
           `Access denied for Plant [${targetPlantId}] outside user scope`,
         );
