@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Download, Smartphone, X, Share, CheckCircle2 } from "lucide-react";
+import { Smartphone, Share } from "lucide-react";
 
 export function InstallAppButton() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -10,33 +10,30 @@ export function InstallAppButton() {
   const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
-    // Check if already installed
-    if (typeof window !== "undefined") {
-      const isStandaloneMode =
-        window.matchMedia("(display-mode: standalone)").matches ||
-        (window.navigator as any).standalone === true;
-      setIsStandalone(isStandaloneMode);
+    const isStandaloneMode =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true;
+    setIsStandalone(isStandaloneMode);
 
-      const userAgent = window.navigator.userAgent.toLowerCase();
-      const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
-      setIsIos(isIosDevice);
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
+    setIsIos(isIosDevice);
 
-      const handleBeforeInstall = (e: Event) => {
-        e.preventDefault();
-        setDeferredPrompt(e);
-      };
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
 
-      window.addEventListener("beforeinstallprompt", handleBeforeInstall);
+    window.addEventListener("beforeinstallprompt", handleBeforeInstall);
 
-      // Register SW
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/sw.js").catch(() => {});
-      }
-
-      return () => {
-        window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
-      };
+    // Register SW
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
+    };
   }, []);
 
   if (isStandalone) {

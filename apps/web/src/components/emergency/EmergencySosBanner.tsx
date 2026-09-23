@@ -1,9 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { apiClient } from "@/lib/api";
 import { emergencySiren } from "@/lib/emergency-siren";
-import { AlertTriangle, Volume2, VolumeX, ShieldAlert, CheckCircle } from "lucide-react";
+import { Volume2, VolumeX, ShieldAlert, CheckCircle } from "lucide-react";
 
 export interface ActiveSosAlert {
   id: string;

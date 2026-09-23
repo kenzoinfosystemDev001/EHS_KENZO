@@ -8,10 +8,7 @@ import {
   AlertCircle,
   FileText,
   AlertTriangle,
-  Eye,
-  ShieldAlert,
   MapPin,
-  CheckCircle2,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import Link from "next/link";
