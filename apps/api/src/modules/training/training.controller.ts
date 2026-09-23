@@ -82,4 +82,14 @@ export class TrainingController {
   checkEligibility(@CurrentUser() user: AuthenticatedUserContext) {
     return this.trainingService.checkEligibility(user.id);
   }
+
+  @Post("request")
+  @RequirePermissions(Permissions.TRAINING_READ)
+  requestTraining(
+    @Body() dto: { courseId?: string; topic?: string; reason?: string; preferredDate?: string },
+    @CurrentUser() user: AuthenticatedUserContext,
+  ) {
+    return this.trainingService.requestTraining(dto, user);
+  }
 }
+

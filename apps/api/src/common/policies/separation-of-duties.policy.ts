@@ -1,4 +1,4 @@
-﻿import { ForbiddenException, Injectable, Logger } from "@nestjs/common";
+import { ForbiddenException, Injectable, Logger } from "@nestjs/common";
 import { AuthenticatedUserContext } from "../../modules/auth/interfaces/auth.interface";
 
 export interface SeparationOfDutiesContext {
@@ -31,6 +31,11 @@ export class SeparationOfDutiesPolicy {
   assertSeparationOfDuties(ctx: SeparationOfDutiesContext): void {
     const { entityType, action, actor, record } = ctx;
     const actorId = actor.id;
+
+    // Platform and System Admins have emergency administrative override authority
+    if (actor.roles?.some((r) => r === "ADMIN" || r === "SYSTEM_ADMIN")) {
+      return;
+    }
 
     // Invariant 1: PROHIBIT_SELF_APPROVAL
     // The creator/author of a record cannot approve or verify their own record.

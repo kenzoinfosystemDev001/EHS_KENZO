@@ -118,12 +118,12 @@ export class RcaService {
         s.scope === AccessScope.ALL_PLANTS,
     );
     const where: any = { organizationId: user.organizationId, deletedAt: null };
-    if (!isGlobal) {
-      where.plantId = {
-        in: user.roleScopes
-          .filter((s) => s.scope === AccessScope.OWN_PLANT && s.plantId)
-          .map((s) => s.plantId!),
-      };
+    const allowedPlantIds = user.roleScopes
+      .map((s) => s.plantId)
+      .filter((id): id is string => Boolean(id));
+
+    if (!isGlobal && allowedPlantIds.length > 0) {
+      where.plantId = { in: allowedPlantIds };
     }
     return this.prisma.rcaStudy.findMany({
       where,

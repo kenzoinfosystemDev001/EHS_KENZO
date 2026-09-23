@@ -10,7 +10,7 @@ import { WorkflowService } from "../workflow/workflow.service";
 import { CreateIncidentDto } from "./dto/create-incident.dto";
 import { IncidentActionDto } from "./dto/incident-action.dto";
 import { AuthenticatedUserContext } from "../auth/interfaces/auth.interface";
-import { IncidentStatus } from "@prisma/client";
+import { IncidentStatus, NotificationPriority } from "@prisma/client";
 import { AccessScope } from "@kenzo-ehs/types";
 
 import { SequenceAllocatorService } from "../../common/sequence/sequence-allocator.service";
@@ -28,22 +28,35 @@ export class IncidentService {
     },
     [IncidentStatus.REPORTED]: {
       CLASSIFY: IncidentStatus.CLASSIFIED,
+      START_INVESTIGATION: IncidentStatus.INVESTIGATING,
+      CLOSE: IncidentStatus.CLOSED,
+      APPROVE_CLOSURE: IncidentStatus.CLOSED,
     },
     [IncidentStatus.CLASSIFIED]: {
       START_INVESTIGATION: IncidentStatus.INVESTIGATING,
+      CLOSE: IncidentStatus.CLOSED,
+      APPROVE_CLOSURE: IncidentStatus.CLOSED,
     },
     [IncidentStatus.INVESTIGATING]: {
       INITIATE_RCA: IncidentStatus.RCA_INITIATED,
-      CLOSE: IncidentStatus.PENDING_CLOSURE,
+      LINK_CAPA: IncidentStatus.CAPA_LINKED,
+      REQUEST_CLOSURE: IncidentStatus.PENDING_CLOSURE,
+      CLOSE: IncidentStatus.CLOSED,
+      APPROVE_CLOSURE: IncidentStatus.CLOSED,
     },
     [IncidentStatus.RCA_INITIATED]: {
       LINK_CAPA: IncidentStatus.CAPA_LINKED,
+      CLOSE: IncidentStatus.CLOSED,
+      APPROVE_CLOSURE: IncidentStatus.CLOSED,
     },
     [IncidentStatus.CAPA_LINKED]: {
       REQUEST_CLOSURE: IncidentStatus.PENDING_CLOSURE,
+      CLOSE: IncidentStatus.CLOSED,
+      APPROVE_CLOSURE: IncidentStatus.CLOSED,
     },
     [IncidentStatus.PENDING_CLOSURE]: {
       APPROVE_CLOSURE: IncidentStatus.CLOSED,
+      CLOSE: IncidentStatus.CLOSED,
     },
   };
 
@@ -84,13 +97,14 @@ export class IncidentService {
           description: dto.description,
           incidentType: dto.incidentType,
           severity: dto.severity,
-          status: IncidentStatus.DRAFT,
+          status: IncidentStatus.REPORTED,
           incidentDate: new Date(dto.incidentDate),
           incidentTime: dto.incidentTime ?? null,
           location: dto.location ?? null,
           immediateActions: dto.immediateActions ?? null,
           isStatutoryRequired: dto.isStatutoryRequired ?? false,
           reportedById: user.id,
+          submittedAt: new Date(),
         },
         include: {
           plant: { select: { id: true, code: true, name: true } },
@@ -105,7 +119,7 @@ export class IncidentService {
         user.organizationId,
         "Incident",
         incident.id,
-        IncidentStatus.DRAFT,
+        IncidentStatus.REPORTED,
         "INCIDENT_STANDARD_V1",
         tx,
       );
@@ -121,8 +135,64 @@ export class IncidentService {
           status: incident.status,
           referenceNumber: incident.referenceNumber,
         },
-        reason: "Incident created",
+        reason: "Incident created and submitted for higher authority review",
         tx,
+      });
+
+      // Immediate in-app escalation to higher authorities: HSE Manager, Plant Head, Dept Head, Admin, Corporate HSE
+      const higherAuthorityRoles = [
+        "HSE_MANAGER",
+        "PLANT_HEAD",
+        "DEPARTMENT_HEAD",
+        "ADMIN",
+        "SYSTEM_ADMIN",
+        "CORPORATE_HSE",
+      ];
+      const authorityUsers = await tx.user.findMany({
+        where: {
+          organizationId: user.organizationId,
+          deletedAt: null,
+          userRoles: {
+            some: {
+              role: {
+                code: { in: higherAuthorityRoles },
+              },
+            },
+          },
+        },
+        select: { id: true, email: true },
+      });
+
+      if (authorityUsers.length > 0) {
+        await tx.notification.createMany({
+          data: authorityUsers.map((auth) => ({
+            userId: auth.id,
+            title: `🚨 Incident Ticket: ${incident.referenceNumber} (${incident.severity})`,
+            message: `A ${incident.severity} incident "${incident.title}" reported at ${plant.name}. Immediate higher authority investigation & intervention required.`,
+            priority:
+              incident.severity === "CRITICAL" || incident.severity === "CATASTROPHIC"
+                ? NotificationPriority.URGENT
+                : NotificationPriority.HIGH,
+            channel: "IN_APP",
+            linkUrl: `/incidents/${incident.id}`,
+            entityType: "Incident",
+            entityId: incident.id,
+          })),
+        });
+      }
+
+      // Confirmation notification to reporter
+      await tx.notification.create({
+        data: {
+          userId: user.id,
+          title: `Incident Ticket Registered: ${incident.referenceNumber}`,
+          message: `Your incident ticket is now active and escalated to HSE Managers and Leadership for resolution.`,
+          priority: NotificationPriority.HIGH,
+          channel: "IN_APP",
+          linkUrl: `/incidents/${incident.id}`,
+          entityType: "Incident",
+          entityId: incident.id,
+        },
       });
 
       await this.outboxService.emit({
@@ -152,17 +222,28 @@ export class IncidentService {
     );
 
     const where: any = { organizationId: user.organizationId, deletedAt: null };
-    if (!isGlobal) {
-      where.plantId = {
-        in: user.roleScopes
-          .filter((s) => s.scope === AccessScope.OWN_PLANT && s.plantId)
-          .map((s) => s.plantId!),
-      };
-    }
+
     if (plantId) {
       this.assertPlantAccess(plantId, user);
       where.plantId = plantId;
+    } else if (!isGlobal) {
+      const allowedPlantIds = user.roleScopes
+        .map((s) => s.plantId)
+        .filter((id): id is string => Boolean(id));
+
+      if (allowedPlantIds.length > 0) {
+        where.OR = [
+          { plantId: { in: allowedPlantIds } },
+          { reportedById: user.id },
+        ];
+      } else {
+        where.OR = [
+          { organizationId: user.organizationId },
+          { reportedById: user.id },
+        ];
+      }
     }
+
     if (type) {
       where.incidentType = type;
     }
@@ -174,6 +255,12 @@ export class IncidentService {
         department: { select: { id: true, code: true, name: true } },
         reportedBy: {
           select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        investigator: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        capaRecords: {
+          select: { id: true, referenceNumber: true, status: true, title: true },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -199,7 +286,7 @@ export class IncidentService {
           select: { id: true, referenceNumber: true, status: true },
         },
         capaRecords: {
-          select: { id: true, referenceNumber: true, status: true },
+          select: { id: true, referenceNumber: true, title: true, status: true, priority: true },
         },
       },
     });
@@ -207,7 +294,12 @@ export class IncidentService {
     if (!incident || incident.organizationId !== user.organizationId) {
       throw new NotFoundException(`Incident [${id}] not found`);
     }
-    this.assertPlantAccess(incident.plantId, user);
+
+    // Reporters can always view their own reported incident
+    if (incident.reportedById !== user.id) {
+      this.assertPlantAccess(incident.plantId, user);
+    }
+
     return incident;
   }
 
@@ -233,14 +325,27 @@ export class IncidentService {
     };
     if (action === "REPORT") statusUpdates.submittedAt = new Date();
     if (action === "CLASSIFY") statusUpdates.classifiedAt = new Date();
-    if (action === "START_INVESTIGATION")
+    if (action === "START_INVESTIGATION") {
       statusUpdates.investigationStartedAt = new Date();
-    if (action === "APPROVE_CLOSURE") statusUpdates.closedAt = new Date();
+      if (!incident.investigatorId) {
+        statusUpdates.investigatorId = user.id;
+      }
+    }
+    if (action === "APPROVE_CLOSURE" || action === "CLOSE") {
+      statusUpdates.closedAt = new Date();
+    }
 
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.incident.update({
         where: { id: incident.id },
         data: statusUpdates,
+        include: {
+          plant: { select: { id: true, code: true, name: true } },
+          department: { select: { id: true, code: true, name: true } },
+          reportedBy: { select: { id: true, email: true, firstName: true, lastName: true } },
+          investigator: { select: { id: true, email: true, firstName: true, lastName: true } },
+          capaRecords: true,
+        },
       });
 
       await this.workflowService.executeTransition(
@@ -287,6 +392,22 @@ export class IncidentService {
         },
         tx,
       });
+
+      // Dispatch in-app notification to reporter about status progression & help provided
+      if (incident.reportedById && incident.reportedById !== user.id) {
+        await tx.notification.create({
+          data: {
+            userId: incident.reportedById,
+            title: `Safety Ticket Update: ${incident.referenceNumber}`,
+            message: `Status updated to ${nextState} by ${user.firstName} ${user.lastName}. ${dto.comments ? `Notes: ${dto.comments}` : ''}`,
+            priority: action === "APPROVE_CLOSURE" || action === "CLOSE" ? NotificationPriority.MEDIUM : NotificationPriority.HIGH,
+            channel: "IN_APP",
+            linkUrl: `/incidents/${incident.id}`,
+            entityType: "Incident",
+            entityId: incident.id,
+          },
+        });
+      }
 
       return updated;
     }, TX_CONFIG);

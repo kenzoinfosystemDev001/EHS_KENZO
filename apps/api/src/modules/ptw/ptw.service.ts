@@ -138,14 +138,25 @@ export class PtwService {
         s.scope === AccessScope.ALL_PLANTS,
     );
     const where: any = { organizationId: user.organizationId, deletedAt: null };
-    if (!isGlobal) {
-      where.plantId = {
-        in: user.roleScopes
-          .filter((s) => s.scope === AccessScope.OWN_PLANT && s.plantId)
-          .map((s) => s.plantId!),
-      };
+    if (plantId) {
+      where.plantId = plantId;
+    } else if (!isGlobal) {
+      const allowedPlantIds = user.roleScopes
+        .map((s) => s.plantId)
+        .filter((id): id is string => Boolean(id));
+
+      if (allowedPlantIds.length > 0) {
+        where.OR = [
+          { plantId: { in: allowedPlantIds } },
+          { requestedById: user.id },
+        ];
+      } else {
+        where.OR = [
+          { organizationId: user.organizationId },
+          { requestedById: user.id },
+        ];
+      }
     }
-    if (plantId) where.plantId = plantId;
 
     return this.prisma.permitToWork.findMany({
       where,

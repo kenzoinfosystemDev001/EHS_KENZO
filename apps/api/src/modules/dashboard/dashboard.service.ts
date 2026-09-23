@@ -15,16 +15,14 @@ export class DashboardService {
         s.scope === AccessScope.ALL_PLANTS,
     );
 
-    const plantFilter = isGlobal
-      ? { organizationId: user.organizationId }
-      : {
-          organizationId: user.organizationId,
-          plantId: {
-            in: user.roleScopes
-              .filter((s) => s.scope === AccessScope.OWN_PLANT && s.plantId)
-              .map((s) => s.plantId!),
-          },
-        };
+    const allowedPlantIds = user.roleScopes
+      .map((s) => s.plantId)
+      .filter((id): id is string => Boolean(id));
+
+    const plantFilter: any = { organizationId: user.organizationId };
+    if (!isGlobal && allowedPlantIds.length > 0) {
+      plantFilter.plantId = { in: allowedPlantIds };
+    }
 
     const now = new Date();
 

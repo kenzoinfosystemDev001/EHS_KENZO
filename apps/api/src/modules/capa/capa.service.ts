@@ -125,14 +125,28 @@ export class CapaService {
         s.scope === AccessScope.ALL_PLANTS,
     );
     const where: any = { organizationId: user.organizationId, deletedAt: null };
-    if (!isGlobal) {
-      where.plantId = {
-        in: user.roleScopes
-          .filter((s) => s.scope === AccessScope.OWN_PLANT && s.plantId)
-          .map((s) => s.plantId!),
-      };
+
+    if (plantId) {
+      where.plantId = plantId;
+    } else if (!isGlobal) {
+      const allowedPlantIds = user.roleScopes
+        .map((s) => s.plantId)
+        .filter((id): id is string => Boolean(id));
+
+      if (allowedPlantIds.length > 0) {
+        where.OR = [
+          { plantId: { in: allowedPlantIds } },
+          { createdById: user.id },
+          { assignedToId: user.id },
+        ];
+      } else {
+        where.OR = [
+          { organizationId: user.organizationId },
+          { createdById: user.id },
+          { assignedToId: user.id },
+        ];
+      }
     }
-    if (plantId) where.plantId = plantId;
 
     return this.prisma.capaRecord.findMany({
       where,
@@ -140,9 +154,14 @@ export class CapaService {
         assignedTo: {
           select: { id: true, email: true, firstName: true, lastName: true },
         },
-        incident: { select: { id: true, referenceNumber: true } },
+        createdBy: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        plant: { select: { id: true, code: true, name: true } },
+        department: { select: { id: true, code: true, name: true } },
+        incident: { select: { id: true, referenceNumber: true, title: true } },
       },
-      orderBy: { dueDate: "asc" },
+      orderBy: { createdAt: "desc" },
     });
   }
 

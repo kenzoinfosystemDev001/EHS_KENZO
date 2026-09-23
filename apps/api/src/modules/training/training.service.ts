@@ -94,4 +94,68 @@ export class TrainingService {
     });
     return { eligible: records.length > 0, compliantCoursesCount: records.length };
   }
+
+  async requestTraining(
+    dto: { courseId?: string; topic?: string; reason?: string; preferredDate?: string },
+    user: AuthenticatedUserContext,
+  ) {
+    const higherAuthorityRoles = [
+      "TRAINER",
+      "LD_MANAGER",
+      "HSE_MANAGER",
+      "PLANT_HEAD",
+      "ADMIN",
+      "SYSTEM_ADMIN",
+    ];
+
+    const authorityUsers = await this.prisma.user.findMany({
+      where: {
+        organizationId: user.organizationId,
+        deletedAt: null,
+        userRoles: {
+          some: {
+            role: {
+              code: { in: higherAuthorityRoles },
+            },
+          },
+        },
+      },
+      select: { id: true, email: true },
+    });
+
+    const topicTitle = dto.topic || "EHS Safety & Operational Competency Training";
+
+    if (authorityUsers.length > 0) {
+      await this.prisma.notification.createMany({
+        data: authorityUsers.map((auth) => ({
+          userId: auth.id,
+          title: `📚 Training Request: ${topicTitle}`,
+          message: `${user.firstName} ${user.lastName} submitted a request for training. Reason: ${dto.reason || 'Skill & safety compliance enhancement'}.`,
+          priority: "MEDIUM",
+          channel: "IN_APP",
+          linkUrl: "/training",
+          entityType: "TrainingRequest",
+        })),
+      });
+    }
+
+    // Confirmation notification to requesting user
+    await this.prisma.notification.create({
+      data: {
+        userId: user.id,
+        title: `Training Request Submitted: ${topicTitle}`,
+        message: `Your training request has been recorded and submitted to L&D and HSE Management for review and scheduling.`,
+        priority: "MEDIUM",
+        channel: "IN_APP",
+        linkUrl: "/training",
+        entityType: "TrainingRequest",
+      },
+    });
+
+    return {
+      success: true,
+      message: "Training request successfully submitted to L&D & HSE Management",
+    };
+  }
 }
+
